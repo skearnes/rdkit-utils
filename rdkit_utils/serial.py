@@ -38,7 +38,8 @@ def read_mols(filename, mol_format=None, remove_salts=True):
     -------
     An ndarray containing Mol objects.
     """
-    mols = []
+
+    # determine file format
     if mol_format is None:
         if filename.endswith(('.sdf', '.sdf.gz')):
             mol_format = 'sdf'
@@ -54,6 +55,9 @@ def read_mols(filename, mol_format=None, remove_salts=True):
         f = gzip.open(filename)
     else:
         f = open(filename)
+
+    # read molecules
+    mols = []
     if mol_format == 'sdf':
         for mol in Chem.ForwardSDMolSupplier(f):
             mols.append(mol)
@@ -107,6 +111,7 @@ def read_mols(filename, mol_format=None, remove_salts=True):
                     mol.AddConformer(conf)
         combined.append(mol)
     combined = np.asarray(combined)
+
     return combined
 
 
