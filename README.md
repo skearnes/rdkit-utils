@@ -8,7 +8,7 @@ The utilities in this project are designed to streamline common processes in che
 Examples
 --------
 
-Read molecules from multiple file formats. This function automatically __perceives conformers__ and can optionally __remove salts__, features that are not provided by the molecule suppliers in the RDKit:
+Read molecules from multiple file formats. This function automatically __perceives conformers__ and can optionally __remove salts__&mdash;features that are not provided by the molecule suppliers in the RDKit:
 
 ```python
 from rdkit_utils import serial
