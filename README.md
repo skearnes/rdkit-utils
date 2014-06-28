@@ -13,8 +13,8 @@ Read molecules from multiple file formats. This function automatically __perceiv
 ```python
 from rdkit_utils import serial
 
-mols = serial.read_mols('molecules.sdf.gz')  # gzipped files are OK
-mols = serial.read_mols('molecules.smi')  # it can read SMILES, too
+mols = serial.read_mols_from_file('molecules.sdf.gz')  # gzipped files are OK
+mols = serial.read_mols_from_file('molecules.smi')  # it can read SMILES, too
 ```
 
 Generate conformers:
@@ -22,6 +22,6 @@ Generate conformers:
 ```python
 from rdkit_utils import conformers, serial
 
-mols = serial.read_mols('molecules.sdf.gz')
+mols = serial.read_mols_from_file('molecules.sdf.gz')
 expanded = conformers.generate_conformers(mols, n_conformers=10)
 ```
