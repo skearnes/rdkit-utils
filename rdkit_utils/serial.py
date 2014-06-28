@@ -23,7 +23,8 @@ def read_mols_from_file(filename, mol_format=None, remove_salts=True):
     filename : str
         Filename.
     mol_format : str, optional
-        Molecule file format. Currently supports 'sdf' and 'smi'.
+        Molecule file format. Currently supports 'sdf' and 'smi'. If not
+        provided, this method will attempt to infer it from the filename.
     remove_salts : bool, optional (default True)
         Whether to remove salts.
 
@@ -68,7 +69,7 @@ def read_mols(f, mol_format, remove_salts=True):
     ----------
     f : file
         File-like object.
-    mol_format : str, optional
+    mol_format : str
         Molecule file format. Currently supports 'sdf' and 'smi'.
     remove_salts : bool, optional (default True)
         Whether to remove salts.
@@ -95,6 +96,9 @@ def read_mols(f, mol_format, remove_salts=True):
             if name is not None:
                 mol.SetProp('_Name', name)
             mols.append(mol)
+    else:
+        raise NotImplementedError('Unrecognized mol_format "{}"'.format(
+            mol_format))
 
     # remove salts
     if remove_salts:
