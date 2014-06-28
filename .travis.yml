@@ -3,8 +3,8 @@ python:
   - "2.7"
 
 before_install:
-# Install RDKit from source
-# Follow the pattern in rdkit/rdkit/.travis.yml
+ # Install RDKit from source (Release_2014_03_1)
+ # Follow the pattern in rdkit/.travis.yml on GitHub
  - clone=`pwd`
  - cd ~
  - sudo apt-get update -qq
