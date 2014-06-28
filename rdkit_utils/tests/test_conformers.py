@@ -3,14 +3,14 @@ Tests for conformers.py.
 """
 from rdkit import Chem
 
-from pande_gas.utils import rdkit_utils as rd
+from rdkit_utils import conformers
 
 
 def test_generate_conformers():
     """Generate molecule conformers."""
     mol = Chem.MolFromSmiles(test_smiles.split()[0])
     assert mol.GetNumConformers() == 0
-    mol = rd.generate_conformers(mol)
+    mol = conformers.generate_conformers(mol)
     assert mol.GetNumConformers() > 0
 
 test_sdf = """aspirin
