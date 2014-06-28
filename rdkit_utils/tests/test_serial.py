@@ -7,7 +7,7 @@ import tempfile
 
 from rdkit import Chem
 
-from pande_gas.utils import rdkit_utils as rd
+from rdkit_utils import conformers, serial
 
 
 def test_read_sdf():
@@ -16,7 +16,7 @@ def test_read_sdf():
     with open(filename, 'wb') as f:
         f.write(test_sdf)
     n_atoms = Chem.MolFromMolBlock(test_sdf).GetNumAtoms()
-    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
+    assert serial.read_mols_from_file(filename)[0].GetNumAtoms() == n_atoms
     os.remove(filename)
 
 
@@ -26,7 +26,7 @@ def test_read_sdf_gz():
     with gzip.open(filename, 'wb') as f:
         f.write(test_sdf)
     n_atoms = Chem.MolFromMolBlock(test_sdf).GetNumAtoms()
-    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
+    assert serial.read_mols_from_file(filename)[0].GetNumAtoms() == n_atoms
     os.remove(filename)
 
 
@@ -36,7 +36,7 @@ def test_read_smi():
     with open(filename, 'wb') as f:
         f.write(test_smiles)
     n_atoms = Chem.MolFromSmiles(test_smiles.split()[0]).GetNumAtoms()
-    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
+    assert serial.read_mols_from_file(filename)[0].GetNumAtoms() == n_atoms
     os.remove(filename)
 
 
@@ -46,18 +46,30 @@ def test_read_smi_gz():
     with gzip.open(filename, 'wb') as f:
         f.write(test_smiles)
     n_atoms = Chem.MolFromSmiles(test_smiles.split()[0]).GetNumAtoms()
-    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
+    assert serial.read_mols_from_file(filename)[0].GetNumAtoms() == n_atoms
+    os.remove(filename)
+
+
+def test_read_file_like():
+    """Read from a file-like object."""
+    _, filename = tempfile.mkstemp(suffix='.sdf')
+    with open(filename, 'wb') as f:
+        f.write(test_sdf)
+    n_atoms = Chem.MolFromMolBlock(test_sdf).GetNumAtoms()
+    with open(filename) as f:
+        mols = serial.read_mols(f, mol_format='sdf')
+    assert mols[0].GetNumAtoms() == n_atoms
     os.remove(filename)
 
 
 def test_read_multiconformer():
     """Read multiconformer SDF file."""
     mol = Chem.MolFromMolBlock(test_sdf)
-    mol = rd.generate_conformers(mol, n_conformers=10)
+    mol = conformers.generate_conformers(mol, n_conformers=10)
     assert mol.GetNumConformers() > 1
     _, filename = tempfile.mkstemp(suffix='.sdf')
-    rd.write_mols([mol], filename)
-    mols = rd.read_mols(filename)
+    serial.write_mols([mol], filename)
+    mols = serial.read_mols_from_file(filename)
     assert len(mols) == 1
     assert mols[0].GetNumConformers() == mol.GetNumConformers()
     os.remove(filename)
@@ -67,8 +79,9 @@ def test_write_sdf():
     """Write SDF file."""
     _, filename = tempfile.mkstemp(suffix='.sdf')
     mol = Chem.MolFromSmiles(test_smiles.split()[0])
-    rd.write_mols(mol, filename)
-    assert rd.read_mols(filename)[0].GetNumAtoms() == mol.GetNumAtoms()
+    serial.write_mols(mol, filename)
+    mols = serial.read_mols_from_file(filename)
+    assert mols[0].GetNumAtoms() == mol.GetNumAtoms()
     os.remove(filename)
 
 
@@ -76,8 +89,9 @@ def test_write_sdf_gz():
     """Write SDF file."""
     _, filename = tempfile.mkstemp(suffix='.sdf.gz')
     mol = Chem.MolFromSmiles(test_smiles.split()[0])
-    rd.write_mols(mol, filename)
-    assert rd.read_mols(filename)[0].GetNumAtoms() == mol.GetNumAtoms()
+    serial.write_mols(mol, filename)
+    mols = serial.read_mols_from_file(filename)
+    assert mols[0].GetNumAtoms() == mol.GetNumAtoms()
     os.remove(filename)
 
 test_sdf = """aspirin

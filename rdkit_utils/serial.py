@@ -14,16 +14,9 @@ from rdkit import Chem
 from rdkit.Chem.SaltRemover import SaltRemover
 
 
-def read_mols(filename, mol_format=None, remove_salts=True):
+def read_mols_from_file(filename, mol_format=None, remove_salts=True):
     """
-    Read molecules. Supports SDF or SMILES format.
-
-    Molecule conformers are combined into a single molecule. Two molecules
-    are considered conformers of the same molecule if they:
-    * Are contiguous in the file
-    * Have identical SMILES strings
-    * Have identical compound names (a warning is issued if compounds lack
-        names)
+    Read molecules from a file.
 
     Parameters
     ----------
@@ -55,6 +48,35 @@ def read_mols(filename, mol_format=None, remove_salts=True):
         f = gzip.open(filename)
     else:
         f = open(filename)
+    mols = read_mols(f, mol_format=mol_format, remove_salts=remove_salts)
+    f.close()
+    return mols
+
+
+def read_mols(f, mol_format, remove_salts=True):
+    """
+    Read molecules. Supports SDF or SMILES format.
+
+    Molecule conformers are combined into a single molecule. Two molecules
+    are considered conformers of the same molecule if they:
+    * Are contiguous in the file
+    * Have identical SMILES strings
+    * Have identical compound names (a warning is issued if compounds lack
+        names)
+
+    Parameters
+    ----------
+    f : file
+        File-like object.
+    mol_format : str, optional
+        Molecule file format. Currently supports 'sdf' and 'smi'.
+    remove_salts : bool, optional (default True)
+        Whether to remove salts.
+
+    Returns
+    -------
+    An ndarray containing Mol objects.
+    """
 
     # read molecules
     mols = []
@@ -73,7 +95,6 @@ def read_mols(filename, mol_format=None, remove_salts=True):
             if name is not None:
                 mol.SetProp('_Name', name)
             mols.append(mol)
-    f.close()
 
     # remove salts
     if remove_salts:
