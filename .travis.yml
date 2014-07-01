@@ -21,7 +21,7 @@ before_install:
  - mkdir $RDBASE/External/java_lib
  - cp /usr/share/java/junit.jar $RDBASE/External/java_lib
  - ls -l $RDBASE/External/java_lib
- - cmake ..
+ - cmake -D RDK_BUILD_CPP_TESTS=OFF ..
  - make -j2
  - make install
 
@@ -34,4 +34,4 @@ install:
 
 script:
  - nosetests
- - find ./ -name "*.py" -exec pep8 -v --count {} \;
+ - pep8 rdkit_utils
