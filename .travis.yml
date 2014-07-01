@@ -7,12 +7,12 @@ before_install:
  # Install RDKit from source (Release_2014_03_1)
  # Follow the pattern in rdkit/.travis.yml on GitHub
  - clone=`pwd`
- - cd ~
  - sudo apt-get update -qq
  - sudo apt-get install -qq flex bison build-essential python-numpy cmake python-dev sqlite3 libsqlite3-dev libboost-dev libboost-python-dev libboost-regex-dev python-imaging openjdk-7-jdk swig junit
- - wget https://github.com/rdkit/rdkit/archive/Release_2014_03_1.tar.gz
- - tar -xzf Release_2014_03_1.tar.gz
- - cd rdkit-Release_2014_03_1/
+ - cd ~
+ - git clone https://github.com/rdkit/rdkit.git rdkit/rdkit
+ - cd rdkit/rdkit
+ - git checkout tags/Release_2014_03_1
  - export RDBASE=`pwd`
  - export PYTHONPATH=${PYTHONPATH}:${RDBASE}
  - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${RDBASE}/lib
