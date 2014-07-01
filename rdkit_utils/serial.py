@@ -108,7 +108,7 @@ class MolReader(object):
             try:
                 new = source.next()
 
-                # skip errors
+                # on error, skip and move to the next multiconformer mol
                 if new is None:
                     mol_smiles = None
                     continue
