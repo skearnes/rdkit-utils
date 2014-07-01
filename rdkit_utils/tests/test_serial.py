@@ -71,7 +71,7 @@ def test_read_multiconformer():
     _, filename = tempfile.mkstemp(suffix='.sdf')
     serial.write_mols_to_file([mol], filename)
     mols = serial.read_mols_from_file(filename)
-    mols = [mol for mol in mols]
+    mols = [m for m in mols]
     assert len(mols) == 1
     assert mols[0].GetNumConformers() == mol.GetNumConformers()
     os.remove(filename)

@@ -25,8 +25,9 @@ before_install:
  - make -j2
  - make install
 
- # Install pep8
+ # Install code analysis tools
  - pip install pep8
+ - pip install pyflakes
 
 install:
  - cd $clone
@@ -35,3 +36,4 @@ install:
 script:
  - nosetests
  - pep8 rdkit_utils
+ - pyflakes rdkit_utils
