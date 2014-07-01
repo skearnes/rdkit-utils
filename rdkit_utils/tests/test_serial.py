@@ -90,6 +90,7 @@ def test_read_multiple_smiles():
     assert mols[1].GetNumAtoms() == Chem.MolFromSmiles(
         ibuprofen_smiles.split()[0]).GetNumAtoms()
 
+
 def test_read_multiple_multiconformer():
     """Read multiple multiconformer SDF file."""
     mol1 = Chem.MolFromSmiles(aspirin_smiles.split()[0])
