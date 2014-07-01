@@ -14,6 +14,167 @@ from rdkit import Chem
 from rdkit.Chem.SaltRemover import SaltRemover
 
 
+def guess_mol_format(filename):
+    """
+    Guess molecule file format from filename. Currently supports SDF and
+    SMILES.
+
+    Parameters
+    ----------
+    filename : str
+        Filename.
+    """
+    if filename.endswith(('.sdf', '.sdf.gz')):
+        mol_format = 'sdf'
+    elif filename.endswith(('.smi', '.smi.gz', '.can', '.can.gz',
+                            '.ism', '.ism.gz')):
+        mol_format = 'smi'
+    else:
+        raise NotImplementedError('Unrecognized file format.')
+    return mol_format
+
+
+class MolReader(object):
+    """
+    Read molecules from files and file-like objects. Supports SDF or SMILES
+    format.
+
+    Parameters
+    ----------
+    remove_salts : bool, optional (default True)
+        Whether to remove salts from molecules.
+    """
+    def __init__(self, remove_salts=True):
+        self.remove_salts = remove_salts
+        self.salt_remover = SaltRemover()
+
+    def read_mols_from_file(self, filename, mol_format=None):
+        """
+        Read molecules from a file.
+
+        Parameters
+        ----------
+        filename : str
+            Filename.
+        mol_format : str, optional
+            Molecule file format. Currently supports 'sdf' and 'smi'. If
+            not provided, this method will attempt to infer it from the
+            filename.
+
+        Returns
+        -------
+        A generator yielding multi-conformer Mol objects.
+        """
+        if mol_format is None:
+            mol_format = guess_mol_format(filename)
+        if filename.endswith('.gz'):
+            f = gzip.open(filename)
+        else:
+            f = open(filename)
+        for mol in self.read_mols(f, mol_format=mol_format):
+            yield mol
+        f.close()
+
+    def read_mols(self, f, mol_format):
+        """
+        Read molecules from a file-like object.
+
+        Molecule conformers are combined into a single molecule. Two
+        molecules are considered conformers of the same molecule if they:
+        * Are contiguous in the file
+        * Have identical (canonical isomeric) SMILES strings
+        * Have identical compound names (a warning is issued if compounds
+            lack names)
+
+        Parameters
+        ----------
+        f : file
+            File-like object.
+        mol_format : str
+            Molecule file format. Currently supports 'sdf' and 'smi'.
+
+        Returns
+        -------
+        A generator yielding multi-conformer Mol objects.
+        """
+        source = self._read_mols(f, mol_format)
+        mol = source.next()
+        if mol.HasProp("_Name"):
+            mol_name = mol.GetProp("_Name")
+        else:
+            mol_name = None
+        mol_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+        while True:
+            try:
+                new = source.next()
+            except StopIteration:
+                break
+            if new.HasProp("_Name"):
+                new_name = new.GetProp("_Name")
+            else:
+                new_name = None
+            new_smiles = Chem.MolToSmiles(mol, isomericSmiles=True,
+                                          canonical=True)
+            if new_smiles == mol_smiles and new_name == mol_name:
+                if new_name is None:
+                    warnings.warn("Combining conformers of an unnamed " +
+                                  "molecule.")
+                assert new.GetNumConformers() == 1
+                for conf in new.GetConformers():
+                    mol.AddConformer(conf)
+            else:
+                if self.remove_salts:
+                    mol = self.salt_remover.StripMol(mol)
+                yield mol
+                mol = new
+                if mol.HasProp("_Name"):
+                    mol_name = mol.GetProp("_Name")
+                else:
+                    mol_name = None
+                mol_smiles = Chem.MolToSmiles(mol, isomericSmiles=True,
+                                              canonical=True)
+        if self.remove_salts:
+            mol = self.salt_remover.StripMol(mol)
+        yield mol
+
+    def _read_mols(self, f, mol_format):
+        """
+        Read molecules from a file-like object.
+
+        This method returns individual conformers from a file and does not
+        attempt to combine them into multiconformer Mol objects.
+
+        Parameters
+        ----------
+        f : file
+            File-like object.
+        mol_format : str
+            Molecule file format. Currently supports 'sdf' and 'smi'.
+
+        Returns
+        -------
+        A generator yielding single-conformer Mol objects.
+        """
+        if mol_format == 'sdf':
+            for mol in Chem.ForwardSDMolSupplier(f):
+                yield mol
+        elif mol_format == 'smi':
+            for line in f.readlines():
+                line = line.strip().split()
+                if len(line) > 1:
+                    smiles, name = line
+                else:
+                    smiles = line
+                    name = None
+                mol = Chem.MolFromSmiles(smiles)
+                if name is not None:
+                    mol.SetProp('_Name', name)
+                yield mol
+        else:
+            raise NotImplementedError('Unrecognized mol_format "{}"'.format(
+                mol_format))
+
+
 def read_mols_from_file(filename, mol_format=None, remove_salts=True):
     """
     Read molecules from a file.
@@ -23,47 +184,20 @@ def read_mols_from_file(filename, mol_format=None, remove_salts=True):
     filename : str
         Filename.
     mol_format : str, optional
-        Molecule file format. Currently supports 'sdf' and 'smi'. If not
-        provided, this method will attempt to infer it from the filename.
+        Molecule file format. Currently supports 'sdf' and 'smi'. If
+        not provided, this method will attempt to infer it from the
+        filename.
     remove_salts : bool, optional (default True)
-        Whether to remove salts.
-
-    Returns
-    -------
-    An ndarray containing Mol objects.
+        Whether to remove salts from molecules.
     """
-
-    # determine file format
-    if mol_format is None:
-        if filename.endswith(('.sdf', '.sdf.gz')):
-            mol_format = 'sdf'
-        elif filename.endswith(('.smi', '.smi.gz', '.can', '.can.gz', '.ism',
-                                '.ism.gz')):
-            mol_format = 'smi'
-        else:
-            raise NotImplementedError('Unable to guess molecule file format.')
-    if mol_format not in ['sdf', 'smi']:
-        raise NotImplementedError('Unsupported molecule file format ' +
-                                  '"{}".'.format(mol_format))
-    if filename.endswith('.gz'):
-        f = gzip.open(filename)
-    else:
-        f = open(filename)
-    mols = read_mols(f, mol_format=mol_format, remove_salts=remove_salts)
-    f.close()
-    return mols
+    reader = MolReader(remove_salts=remove_salts)
+    for mol in reader.read_mols_from_file(filename, mol_format):
+        yield mol
 
 
 def read_mols(f, mol_format, remove_salts=True):
     """
-    Read molecules. Supports SDF or SMILES format.
-
-    Molecule conformers are combined into a single molecule. Two molecules
-    are considered conformers of the same molecule if they:
-    * Are contiguous in the file
-    * Have identical SMILES strings
-    * Have identical compound names (a warning is issued if compounds lack
-        names)
+    Read molecules from a file-like object.
 
     Parameters
     ----------
@@ -72,95 +206,117 @@ def read_mols(f, mol_format, remove_salts=True):
     mol_format : str
         Molecule file format. Currently supports 'sdf' and 'smi'.
     remove_salts : bool, optional (default True)
-        Whether to remove salts.
-
-    Returns
-    -------
-    An ndarray containing Mol objects.
+        Whether to remove salts from molecules.
     """
-
-    # read molecules
-    mols = []
-    if mol_format == 'sdf':
-        for mol in Chem.ForwardSDMolSupplier(f):
-            mols.append(mol)
-    elif mol_format == 'smi':
-        lines = [line.strip().split() for line in f.readlines()]
-        for line in lines:
-            if len(line) > 1:
-                smiles, name = line
-            else:
-                smiles = line
-                name = None
-            mol = Chem.MolFromSmiles(smiles)
-            if name is not None:
-                mol.SetProp('_Name', name)
-            mols.append(mol)
-    else:
-        raise NotImplementedError('Unrecognized mol_format "{}"'.format(
-            mol_format))
-
-    # remove salts
-    if remove_salts:
-        salt_remover = SaltRemover()
-        mols = [salt_remover.StripMol(mol) for mol in mols]
-
-    # combine conformers
-    smiles = np.asarray([Chem.MolToSmiles(mol, isomericSmiles=True,
-                                          canonical=True) for mol in mols])
-    names = []
-    for mol in mols:
-        if mol.HasProp('_Name'):
-            names.append(mol.GetProp('_Name'))
-        else:
-            names.append(None)
-    to_combine = [[mols[0]]]
-    idx = 0
-    for i in xrange(1, smiles.size):
-        if smiles[i] == smiles[i - 1] and names[i] == names[i - 1]:
-            if names[i] is None:
-                warnings.warn("Combining conformers for unnamed molecules.")
-            to_combine[idx].append(mols[i])
-        else:
-            to_combine.append([mols[i]])
-            idx += 1
-
-    combined = []
-    for mols in to_combine:
-        if len(mols) == 1:
-            mol, = mols
-        else:
-            mol = Chem.Mol(mols[0])
-            for other in mols[1:]:
-                for conf in other.GetConformers():
-                    mol.AddConformer(conf)
-        combined.append(mol)
-    combined = np.asarray(combined)
-
-    return combined
+    reader = MolReader(remove_salts=remove_salts)
+    for mol in reader.read_mols(f, mol_format):
+        yield mol
 
 
-def write_mols(mols, filename):
+class MolWriter(object):
     """
-    Write SDF molecules.
+    Write molecules to files or file-like objects. Supports SDF or SMILES
+    format.
 
     Parameters
     ----------
-    mols : list
+    f : file, optional
+        File-like object.
+    mol_format : str, optional
+        Molecule file format. Currently supports 'sdf' and 'smi'.
+    """
+    def __init__(self, f=None, mol_format=None):
+        self.f = f
+        self.mol_format = mol_format
+
+    def __del__(self):
+        self.close()
+
+    def open(self, filename, mol_format=None):
+        """
+        Open output file.
+
+        Parameters
+        ----------
+        filename : str
+            Filename.
+        mol_format : str, optional
+            Molecule file format. Currently supports 'sdf' and 'smi'.
+        """
+        if filename.endswith('.gz'):
+            self.f = gzip.open(filename, 'wb')
+        else:
+            self.f = open(filename, 'wb')
+        if mol_format is None:
+            self.mol_format = guess_mol_format(filename)
+        else:
+            self.mol_format = mol_format
+
+    def close(self):
+        """
+        Close output file.
+        """
+        if self.f is not None:
+            self.f.close()
+
+    def write(self, mols):
+        """
+        Write molecules to a file.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules to write.
+        """
+        if self.mol_format == 'sdf':
+            w = Chem.SDWriter(self.f)
+            for mol in np.atleast_1d(mols):
+                if mol.GetNumConformers():
+                    for conf in mol.GetConformers():
+                        w.write(mol, confId=conf.GetId())
+                else:
+                    w.write(mol)
+            w.close()
+        elif self.mol_format == 'smi':
+            w = Chem.SmilesWriter(self.f)
+            for mol in np.atleast_1d(mols):
+                w.write(mol)
+            w.close()
+
+
+def write_mols_to_file(mols, filename, mol_format=None):
+    """
+    Write molecules to a file.
+
+    Parameters
+    ----------
+    mols : iterable
         Molecules to write.
     filename : str
         Output filename.
+    mol_format : str, optional
+        Molecule file format. Currently supports 'sdf' and 'smi'. If
+        not provided, this method will attempt to infer it from the
+        filename.
     """
-    if filename.endswith('.gz'):
-        f = gzip.open(filename, 'wb')
-    else:
-        f = open(filename, 'wb')
-    w = Chem.SDWriter(f)
-    for mol in np.atleast_1d(mols):
-        if mol.GetNumConformers():
-            for conf in mol.GetConformers():
-                w.write(mol, confId=conf.GetId())
-        else:
-            w.write(mol)
-    w.close()
-    f.close()
+    writer = MolWriter()
+    writer.open(filename, mol_format)
+    writer.write(mols)
+    writer.close()
+
+
+def write_mols(mols, f, mol_format):
+    """
+    Write molecules to a file-like object.
+
+    Parameters
+    ----------
+    mols : iterable
+        Molecules to write.
+    f : file
+        File-like object.
+    mol_format : str
+        Molecule file format. Currently supports 'sdf' and 'smi'.
+    """
+    writer = MolWriter(f, mol_format)
+    writer.write(mols)
