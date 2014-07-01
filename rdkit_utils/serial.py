@@ -113,7 +113,7 @@ class MolReader(object):
                 new_name = new.GetProp("_Name")
             else:
                 new_name = None
-            new_smiles = Chem.MolToSmiles(mol, isomericSmiles=True,
+            new_smiles = Chem.MolToSmiles(new, isomericSmiles=True,
                                           canonical=True)
             if new_smiles == mol_smiles and new_name == mol_name:
                 if not new_name:

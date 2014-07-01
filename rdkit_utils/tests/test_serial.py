@@ -77,6 +77,19 @@ def test_read_multiconformer():
     os.remove(filename)
 
 
+def test_read_multiple_smiles():
+    """Read multiple SMILES file."""
+    _, filename = tempfile.mkstemp(suffix='.smi')
+    with open(filename, 'wb') as f:
+        f.write("{}\n{}\n".format(aspirin_smiles, ibuprofen_smiles))
+    mols = serial.read_mols_from_file(filename)
+    mols = [mol for mol in mols]
+    assert len(mols) == 2
+    assert mols[0].GetNumAtoms() == Chem.MolFromSmiles(
+        aspirin_smiles.split()[0]).GetNumAtoms()
+    assert mols[1].GetNumAtoms() == Chem.MolFromSmiles(
+        ibuprofen_smiles.split()[0]).GetNumAtoms()
+
 def test_read_multiple_multiconformer():
     """Read multiple multiconformer SDF file."""
     mol1 = Chem.MolFromSmiles(aspirin_smiles.split()[0])
