@@ -107,6 +107,11 @@ class MolReader(object):
         while True:
             try:
                 new = source.next()
+
+                # on error, skip and move to the next multiconformer mol
+                if new is None:
+                    mol_smiles = None
+                    continue
             except StopIteration:
                 break
             if new.HasProp("_Name"):
@@ -115,6 +120,7 @@ class MolReader(object):
                 new_name = None
             new_smiles = Chem.MolToSmiles(new, isomericSmiles=True,
                                           canonical=True)
+            assert new_smiles
             if new_smiles == mol_smiles and new_name == mol_name:
                 if not new_name:
                     warnings.warn("Grouping conformers of an unnamed " +
