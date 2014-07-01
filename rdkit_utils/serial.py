@@ -79,7 +79,7 @@ class MolReader(object):
         """
         Read molecules from a file-like object.
 
-        Molecule conformers are combined into a single molecule. Two
+        Molecule conformers are grouped into a single molecule. Two
         molecules are considered conformers of the same molecule if they:
         * Are contiguous in the file
         * Have identical (canonical isomeric) SMILES strings
@@ -117,7 +117,7 @@ class MolReader(object):
                                           canonical=True)
             if new_smiles == mol_smiles and new_name == mol_name:
                 if not new_name:
-                    warnings.warn("Combining conformers of an unnamed " +
+                    warnings.warn("Grouping conformers of an unnamed " +
                                   "molecule.")
                 assert new.GetNumConformers() == 1
                 for conf in new.GetConformers():
