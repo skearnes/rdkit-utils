@@ -1,6 +1,5 @@
 rdkit-utils [![Build Status](https://travis-ci.org/skearnes/rdkit-utils.svg?branch=master)](https://travis-ci.org/skearnes/rdkit-utils)
 ===========
-https://travis-ci.org/skearnes/rdkit-utils.svg?branch=master
 
 Utilities for working with the [RDKit](http://www.rdkit.org/)
 
