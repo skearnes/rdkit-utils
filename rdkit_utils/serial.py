@@ -116,7 +116,7 @@ class MolReader(object):
             new_smiles = Chem.MolToSmiles(mol, isomericSmiles=True,
                                           canonical=True)
             if new_smiles == mol_smiles and new_name == mol_name:
-                if new_name is None:
+                if not new_name:
                     warnings.warn("Combining conformers of an unnamed " +
                                   "molecule.")
                 assert new.GetNumConformers() == 1
