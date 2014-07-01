@@ -1,8 +1,9 @@
 language: python
 python:
-  - "2.7"
+ - "2.7"
 
 before_install:
+
  # Install RDKit from source (Release_2014_03_1)
  # Follow the pattern in rdkit/.travis.yml on GitHub
  - clone=`pwd`
@@ -24,9 +25,13 @@ before_install:
  - make -j2
  - make install
 
+ # Install pep8
+ - pip install pep8
+
 install:
  - cd $clone
  - python setup.py install
 
 script:
  - nosetests
+ - find ./ -name "*.py" -exec pep8 -v --count {} \;
