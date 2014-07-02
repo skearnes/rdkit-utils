@@ -77,6 +77,21 @@ def test_read_multiconformer():
     os.remove(filename)
 
 
+def test_read_disabled_conformers():
+    """Read multiconformer SDF file with group_confomers=False."""
+    mol = Chem.MolFromMolBlock(aspirin_sdf)
+    mol = conformers.generate_conformers(mol, n_conformers=2)
+    assert mol.GetNumConformers() > 1
+    _, filename = tempfile.mkstemp(suffix='.sdf')
+    serial.write_mols_to_file([mol], filename)
+    mols = serial.read_mols_from_file(filename, group_conformers=False)
+    mols = [m for m in mols]
+    assert len(mols) == 2
+    for m in mols:
+        assert m.GetNumConformers() == 1
+    os.remove(filename)
+
+
 def test_read_multiple_smiles():
     """Read multiple SMILES file."""
     _, filename = tempfile.mkstemp(suffix='.smi')

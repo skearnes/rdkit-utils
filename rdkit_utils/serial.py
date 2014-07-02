@@ -43,9 +43,18 @@ class MolReader(object):
     ----------
     remove_salts : bool, optional (default True)
         Whether to remove salts from molecules.
+    group_conformers : bool, optional (default True)
+        Whether to group conformers into multiconformer Mol objects. Two
+        molecules are considered conformers of the same molecule if they:
+        * Are contiguous in the file.
+        * Have identical canonical isomeric SMILES strings.
+        * Have identical names.
     """
-    def __init__(self, remove_salts=True):
+    def __init__(self, remove_salts=True, group_conformers=True):
+        self.group_conformers = group_conformers
         self.remove_salts = remove_salts
+
+        # initialize the salt remover
         self.salt_remover = SaltRemover()
 
     def read_mols_from_file(self, filename, mol_format=None):
@@ -79,12 +88,15 @@ class MolReader(object):
         """
         Read molecules from a file-like object.
 
-        Molecule conformers are grouped into a single molecule. Two
-        molecules are considered conformers of the same molecule if they:
-        * Are contiguous in the file
-        * Have identical (canonical isomeric) SMILES strings
-        * Have identical compound names (a warning is issued if compounds
-            lack names)
+        Molecule conformers are optionally grouped into a single molecule.
+        Two molecules are considered conformers of the same molecule if
+        they:
+        * Are contiguous in the file.
+        * Have identical canonical isomeric SMILES strings.
+        * Have identical names
+
+        A warning is issued when grouping conformers of compounds that are
+        unnamed.
 
         Parameters
         ----------
@@ -121,7 +133,9 @@ class MolReader(object):
             new_smiles = Chem.MolToSmiles(new, isomericSmiles=True,
                                           canonical=True)
             assert new_smiles
-            if new_smiles == mol_smiles and new_name == mol_name:
+            if (self.group_conformers and
+                    new_smiles == mol_smiles and
+                    new_name == mol_name):
                 if not new_name:
                     warnings.warn("Grouping conformers of an unnamed " +
                                   "molecule.")
@@ -181,7 +195,8 @@ class MolReader(object):
                 mol_format))
 
 
-def read_mols_from_file(filename, mol_format=None, remove_salts=True):
+def read_mols_from_file(filename, mol_format=None, remove_salts=True,
+                        group_conformers=True):
     """
     Read molecules from a file.
 
@@ -195,13 +210,16 @@ def read_mols_from_file(filename, mol_format=None, remove_salts=True):
         filename.
     remove_salts : bool, optional (default True)
         Whether to remove salts from molecules.
+    group_conformers : bool, optional (default True)
+        Whether to group conformers into multiconformer Mol objects.
     """
-    reader = MolReader(remove_salts=remove_salts)
+    reader = MolReader(remove_salts=remove_salts,
+                       group_conformers=group_conformers)
     for mol in reader.read_mols_from_file(filename, mol_format):
         yield mol
 
 
-def read_mols(f, mol_format, remove_salts=True):
+def read_mols(f, mol_format, remove_salts=True, group_conformers=True):
     """
     Read molecules from a file-like object.
 
@@ -213,8 +231,11 @@ def read_mols(f, mol_format, remove_salts=True):
         Molecule file format. Currently supports 'sdf' and 'smi'.
     remove_salts : bool, optional (default True)
         Whether to remove salts from molecules.
+    group_conformers : bool, optional (default True)
+        Whether to group conformers into multiconformer Mol objects.
     """
-    reader = MolReader(remove_salts=remove_salts)
+    reader = MolReader(remove_salts=remove_salts,
+                       group_conformers=group_conformers)
     for mol in reader.read_mols(f, mol_format):
         yield mol
 
