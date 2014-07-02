@@ -29,7 +29,7 @@ with open('molecules.smi') as f:
     ...
 ```
 
-Generate conformers:
+Generate conformers with energy minimization _prior_ to pruning:
 
 ```python
 from rdkit_utils import conformers, serial
