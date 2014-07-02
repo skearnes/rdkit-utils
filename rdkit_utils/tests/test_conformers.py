@@ -13,6 +13,22 @@ def test_generate_conformers():
     mol = conformers.generate_conformers(mol)
     assert mol.GetNumConformers() > 0
 
+
+def test_mmff94_minimization():
+    """Generate conformers and minimize with MMFF94."""
+    mol = Chem.MolFromSmiles(test_smiles.split()[0])
+    assert mol.GetNumConformers() == 0
+    mol = conformers.generate_conformers(mol, force_field='mmff94')
+    assert mol.GetNumConformers() > 0
+
+
+def test_mmff94s_minimization():
+    """Generate conformers and minimize with MMFF94s."""
+    mol = Chem.MolFromSmiles(test_smiles.split()[0])
+    assert mol.GetNumConformers() == 0
+    mol = conformers.generate_conformers(mol, force_field='mmff94s')
+    assert mol.GetNumConformers() > 0
+
 test_sdf = """aspirin
      RDKit
 

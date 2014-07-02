@@ -35,7 +35,7 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
         no pruning is performed.
     force_field : str, optional (default 'uff')
         Force field to use for conformer energy minimization. Options are
-        'uff' and 'mmff'.
+        'uff', 'mmff94', and 'mmff94s'.
     prune_after_minimization : bool, optional (default True)
         Whether to prune conformers by RMSD after minimization.
     pool_multiplier : int, optional (default 10)
@@ -55,13 +55,15 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
 
     # minimize conformers and get energies
     energy = np.zeros(cids.size, dtype=float)
-    if force_field == 'mmff':
+    if force_field.startswith('mmff'):
         AllChem.MMFFSanitizeMolecule(mol)
+        mmff_props = AllChem.MMFFGetMoleculeProperties(mol, force_field)
     for i, cid in enumerate(cids):
         if force_field == 'uff':
             ff = AllChem.UFFGetMoleculeForceField(mol, confId=int(cid))
-        elif force_field == 'mmff':
-            ff = AllChem.MMFFGetMoleculeForceField(mol, confId=int(cid))
+        elif force_field.startswith('mmff'):
+            ff = AllChem.MMFFGetMoleculeForceField(
+                mol, mmff_props, confId=int(cid))
         else:
             raise ValueError("Invalid force_field '{}'.".format(force_field))
         ff.Minimize()
