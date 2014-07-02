@@ -78,7 +78,7 @@ def test_read_multiconformer():
 
 
 def test_read_disabled_conformers():
-    """Read multiconformer SDF file with group_confomers=False."""
+    """Read multiconformer SDF file with group_conformers=False."""
     mol = Chem.MolFromMolBlock(aspirin_sdf)
     mol = conformers.generate_conformers(mol, n_conformers=2)
     assert mol.GetNumConformers() > 1
