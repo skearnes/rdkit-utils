@@ -7,7 +7,6 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "3-clause BSD"
 
 import gzip
-import numpy as np
 import warnings
 
 from rdkit import Chem
@@ -276,7 +275,7 @@ class MolWriter(object):
         """
         if self.mol_format == 'sdf':
             w = Chem.SDWriter(self.f)
-            for mol in np.atleast_1d(mols):
+            for mol in mols:
                 if mol.GetNumConformers():
                     for conf in mol.GetConformers():
                         w.write(mol, confId=conf.GetId())
@@ -285,7 +284,7 @@ class MolWriter(object):
             w.close()
         elif self.mol_format == 'smi':
             w = Chem.SmilesWriter(self.f)
-            for mol in np.atleast_1d(mols):
+            for mol in mols:
                 w.write(mol)
             w.close()
 

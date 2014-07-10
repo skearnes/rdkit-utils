@@ -113,17 +113,17 @@ def test_write_sdf():
     """Write SDF file."""
     _, filename = tempfile.mkstemp(suffix='.sdf')
     mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    serial.write_mols_to_file(mol, filename)
+    serial.write_mols_to_file([mol], filename)
     mols = serial.read_mols_from_file(filename)
     assert mols.next().GetNumAtoms() == mol.GetNumAtoms()
     os.remove(filename)
 
 
 def test_write_sdf_gz():
-    """Write SDF file."""
+    """Write compressed SDF file."""
     _, filename = tempfile.mkstemp(suffix='.sdf.gz')
     mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    serial.write_mols_to_file(mol, filename)
+    serial.write_mols_to_file([mol], filename)
     mols = serial.read_mols_from_file(filename)
     assert mols.next().GetNumAtoms() == mol.GetNumAtoms()
     os.remove(filename)
