@@ -13,8 +13,7 @@ from rdkit.Chem import AllChem
 
 
 def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
-                        force_field='uff', prune_after_minimization=True,
-                        pool_multiplier=10):
+                        force_field='uff', pool_multiplier=10):
     """
     Generate molecule conformers. See:
     * http://rdkit.org/docs/GettingStartedInPython.html
@@ -36,8 +35,6 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
     force_field : str, optional (default 'uff')
         Force field to use for conformer energy minimization. Options are
         'uff', 'mmff94', and 'mmff94s'.
-    prune_after_minimization : bool, optional (default True)
-        Whether to prune conformers by RMSD after minimization.
     pool_multiplier : int, optional (default 10)
         Factor to multiply by n_conformers to generate the initial
         conformer pool. Since conformers are pruned after energy
@@ -68,8 +65,6 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
             raise ValueError("Invalid force_field '{}'.".format(force_field))
         ff.Minimize()
         energy[i] = ff.CalcEnergy()
-    if not prune_after_minimization:
-        return mol
 
     # calculate RMSD between minimized conformers
     rmsd = np.zeros((cids.size, cids.size), dtype=float)
