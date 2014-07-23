@@ -74,7 +74,7 @@ class MolReader(object):
 
         Returns
         -------
-        A generator yielding multi-conformer Mol objects.
+        A generator yielding multi-conformer RDKit Mol objects.
         """
         if mol_format is None:
             mol_format = guess_mol_format(filename)
@@ -105,7 +105,7 @@ class MolReader(object):
 
         Returns
         -------
-        A generator yielding multi-conformer Mol objects.
+        A generator yielding multi-conformer RDKit Mol objects.
         """
         source = self._read_mols(f, mol_format)
         mol = source.next()
