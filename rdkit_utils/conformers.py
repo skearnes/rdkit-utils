@@ -188,7 +188,7 @@ class ConformerGenerator(object):
         discard : array_like
             Indices of conformers to discard.
         """
-        if self.rmsd_threshold is None or self.rmsd_threshold < 0:
+        if self.rmsd_threshold < 0:
             return range(len(energies)), []
         if len(energies) == 1:
             return [0], []
