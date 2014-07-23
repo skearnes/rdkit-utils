@@ -7,7 +7,6 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "3-clause BSD"
 
 import gzip
-import warnings
 
 from rdkit import Chem
 from rdkit.Chem.SaltRemover import SaltRemover
@@ -47,6 +46,19 @@ class MolReader(object):
         self.remove_salts = remove_salts
         self.salt_remover = SaltRemover()
 
+    def clean_mol(self, mol):
+        """
+        Clean a molecule.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        if self.remove_salts:
+            mol = self.salt_remover.StripMol(mol)
+        return mol
+
     def read_mols_from_file(self, filename, mol_format=None):
         """
         Read molecules from a file.
@@ -82,8 +94,7 @@ class MolReader(object):
         molecules are considered conformers of the same molecule if they:
         * Are contiguous in the file
         * Have identical (canonical isomeric) SMILES strings
-        * Have identical compound names (a warning is issued if compounds
-            lack names)
+        * Have identical compound names (if set)
 
         Parameters
         ----------
@@ -98,49 +109,41 @@ class MolReader(object):
         """
         source = self._read_mols(f, mol_format)
         mol = source.next()
-        if mol.HasProp("_Name"):
-            mol_name = mol.GetProp("_Name")
-        else:
-            mol_name = None
-        mol_smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
-        while True:
-            try:
-                new = source.next()
-
-                # on error, skip and move to the next multiconformer mol
-                if new is None:
-                    mol_smiles = None
-                    continue
-            except StopIteration:
-                break
-            if new.HasProp("_Name"):
-                new_name = new.GetProp("_Name")
-            else:
-                new_name = None
-            new_smiles = Chem.MolToSmiles(new, isomericSmiles=True,
-                                          canonical=True)
-            assert new_smiles
-            if new_smiles == mol_smiles and new_name == mol_name:
-                if not new_name:
-                    warnings.warn("Grouping conformers of an unnamed " +
-                                  "molecule.")
+        for new in source:
+            if self.is_same_molecule(mol, new):
                 assert new.GetNumConformers() == 1
                 for conf in new.GetConformers():
                     mol.AddConformer(conf)
             else:
-                if self.remove_salts:
-                    mol = self.salt_remover.StripMol(mol)
+                mol = self.clean_mol(mol)
                 yield mol
                 mol = new
-                if mol.HasProp("_Name"):
-                    mol_name = mol.GetProp("_Name")
-                else:
-                    mol_name = None
-                mol_smiles = Chem.MolToSmiles(mol, isomericSmiles=True,
-                                              canonical=True)
-        if self.remove_salts:
-            mol = self.salt_remover.StripMol(mol)
+        mol = self.clean_mol(mol)
         yield mol
+
+    def is_same_molecule(self, a, b):
+        """
+        Test whether two molecules are conformers of the same molecule.
+
+        Test for:
+        * Identical (canonical isomeric) SMILES strings
+        * Identical compound names (if set)
+
+        Parameters
+        ----------
+        a, b : RDKit Mol
+            Molecules to compare.
+        """
+        a_name = None
+        if a.HasProp('_Name'):
+            a_name = a.GetProp('_Name')
+        b_name = None
+        if b.HasProp('_Name'):
+            b_name = b.GetProp('_Name')
+        a_smiles = Chem.MolToSmiles(a, isomericSmiles=True, canonical=True)
+        b_smiles = Chem.MolToSmiles(b, isomericSmiles=True, canonical=True)
+        assert a_smiles and b_smiles
+        return a_smiles == b_smiles and a_name == b_name
 
     def _read_mols(self, f, mol_format):
         """
@@ -178,44 +181,6 @@ class MolReader(object):
         else:
             raise NotImplementedError('Unrecognized mol_format "{}"'.format(
                 mol_format))
-
-
-def read_mols_from_file(filename, mol_format=None, remove_salts=True):
-    """
-    Read molecules from a file.
-
-    Parameters
-    ----------
-    filename : str
-        Filename.
-    mol_format : str, optional
-        Molecule file format. Currently supports 'sdf' and 'smi'. If
-        not provided, this method will attempt to infer it from the
-        filename.
-    remove_salts : bool, optional (default True)
-        Whether to remove salts from molecules.
-    """
-    reader = MolReader(remove_salts=remove_salts)
-    for mol in reader.read_mols_from_file(filename, mol_format):
-        yield mol
-
-
-def read_mols(f, mol_format, remove_salts=True):
-    """
-    Read molecules from a file-like object.
-
-    Parameters
-    ----------
-    f : file
-        File-like object.
-    mol_format : str
-        Molecule file format. Currently supports 'sdf' and 'smi'.
-    remove_salts : bool, optional (default True)
-        Whether to remove salts from molecules.
-    """
-    reader = MolReader(remove_salts=remove_salts)
-    for mol in reader.read_mols(f, mol_format):
-        yield mol
 
 
 class MolWriter(object):
@@ -287,6 +252,44 @@ class MolWriter(object):
             for mol in mols:
                 w.write(mol)
             w.close()
+
+
+def read_mols_from_file(filename, mol_format=None, remove_salts=True):
+    """
+    Read molecules from a file.
+
+    Parameters
+    ----------
+    filename : str
+        Filename.
+    mol_format : str, optional
+        Molecule file format. Currently supports 'sdf' and 'smi'. If
+        not provided, this method will attempt to infer it from the
+        filename.
+    remove_salts : bool, optional (default True)
+        Whether to remove salts from molecules.
+    """
+    reader = MolReader(remove_salts=remove_salts)
+    for mol in reader.read_mols_from_file(filename, mol_format):
+        yield mol
+
+
+def read_mols(f, mol_format, remove_salts=True):
+    """
+    Read molecules from a file-like object.
+
+    Parameters
+    ----------
+    f : file
+        File-like object.
+    mol_format : str
+        Molecule file format. Currently supports 'sdf' and 'smi'.
+    remove_salts : bool, optional (default True)
+        Whether to remove salts from molecules.
+    """
+    reader = MolReader(remove_salts=remove_salts)
+    for mol in reader.read_mols(f, mol_format):
+        yield mol
 
 
 def write_mols_to_file(mols, filename, mol_format=None):
