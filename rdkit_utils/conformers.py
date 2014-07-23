@@ -77,10 +77,18 @@ class ConformerGenerator(object):
             Molecule.
         """
         mol = self.embed_molecule(mol)
-        energies = self.minimize_conformers(mol)
+        if not mol.GetNumConformers():
+            msg = 'No conformers generated for molecule'
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+                msg += ' "{}".'.format(name)
+            else:
+                msg += '.'
+            raise RuntimeError(msg)
+        self.minimize_conformers(mol)
         if not self.prune_after_minimization:
             return mol
-        mol = self.prune_conformers(mol, energies)
+        mol = self.prune_conformers(mol)
         return mol
 
     def embed_molecule(self, mol):
@@ -96,12 +104,51 @@ class ConformerGenerator(object):
         AllChem.EmbedMultipleConfs(
             mol, numConfs=self.n_conformers * self.pool_multiplier,
             pruneRmsThresh=self.rmsd_threshold)
-        assert mol.GetNumConformers() >= 1
         return mol
+
+    def get_molecule_force_field(self, mol, conf_id=None, **kwargs):
+        """
+        Get a force field for a molecule.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        conf_id : int, optional
+            ID of the conformer to associate with the force field.
+        kwargs : dict, optional
+            Keyword arguments for force field constructor.
+        """
+        if self.force_field == 'uff':
+            ff = AllChem.UFFGetMoleculeForceField(
+                mol, confId=conf_id, **kwargs)
+        elif self.force_field.startswith('mmff'):
+            AllChem.MMFFSanitizeMolecule(mol)
+            mmff_props = AllChem.MMFFGetMoleculeProperties(
+                mol, mmffVariant=self.force_field)
+            ff = AllChem.MMFFGetMoleculeForceField(
+                mol, mmff_props, confId=conf_id, **kwargs)
+        else:
+            raise ValueError("Invalid force_field " +
+                             "'{}'.".format(self.force_field))
+        return ff
 
     def minimize_conformers(self, mol):
         """
         Minimize molecule conformers.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        for conf in mol.GetConformers():
+            ff = self.get_molecule_force_field(mol, conf_id=conf.GetId())
+            ff.Minimize()
+
+    def get_conformer_energies(self, mol):
+        """
+        Calculate conformer energies.
 
         Parameters
         ----------
@@ -113,25 +160,15 @@ class ConformerGenerator(object):
         energies : array_like
             Minimized conformer energies.
         """
-        energies = np.zeros(mol.GetNumConformers(), dtype=float)
-        if self.force_field.startswith('mmff'):
-            AllChem.MMFFSanitizeMolecule(mol)
-            mmff_props = AllChem.MMFFGetMoleculeProperties(mol,
-                                                           self.force_field)
-        for i, conf in enumerate(mol.GetConformers()):
-            if self.force_field == 'uff':
-                ff = AllChem.UFFGetMoleculeForceField(mol, confId=conf.GetId())
-            elif self.force_field.startswith('mmff'):
-                ff = AllChem.MMFFGetMoleculeForceField(
-                    mol, mmff_props, confId=conf.GetId())
-            else:
-                raise ValueError("Invalid force_field " +
-                                 "'{}'.".format(self.force_field))
-            ff.Minimize()
-            energies[i] = ff.CalcEnergy()
+        energies = []
+        for conf in mol.GetConformers():
+            ff = self.get_molecule_force_field(mol, conf_id=conf.GetId())
+            energy = ff.CalcEnergy()
+            energies.append(energy)
+        energies = np.asarray(energies, dtype=float)
         return energies
 
-    def prune_conformers(self, mol, energies):
+    def prune_conformers(self, mol):
         """
         Prune conformers from a molecule using an RMSD threshold.
 
@@ -139,9 +176,8 @@ class ConformerGenerator(object):
         ----------
         mol : RDKit Mol
             Molecule.
-        energies : array_like
-            Minimized conformer energies.
         """
+        energies = self.get_conformer_energies(mol)
         rmsd = self.get_conformer_rmsd(mol)
         _, discard = self.select_conformers(energies, rmsd)
         conf_ids = [conf.GetId() for conf in mol.GetConformers()]
@@ -199,7 +235,11 @@ class ConformerGenerator(object):
             if len(keep) >= self.n_conformers:
                 discard.append(i)
                 continue
+
+            # get RMSD to selected conformers
             this_rmsd = rmsd[i][np.asarray(keep, dtype=int)]
+
+            # discard conformers closer than the RMSD threshold
             if np.all(this_rmsd >= self.rmsd_threshold):
                 keep.append(i)
             else:
