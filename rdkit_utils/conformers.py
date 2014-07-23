@@ -13,7 +13,8 @@ from rdkit.Chem import AllChem
 
 
 def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
-                        force_field='uff', pool_multiplier=10):
+                        force_field='uff', prune_after_minimization=True,
+                        pool_multiplier=10):
     """
     Generate molecule conformers. See:
     * http://rdkit.org/docs/GettingStartedInPython.html
@@ -35,6 +36,9 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
     force_field : str, optional (default 'uff')
         Force field to use for conformer energy minimization. Options are
         'uff', 'mmff94', and 'mmff94s'.
+    prune_after_minimization : bool, optional (default True)
+        Whether to prune conformers by RMSD after minimization. If False,
+        pool_multiplier is set to 1.
     pool_multiplier : int, optional (default 10)
         Factor to multiply by n_conformers to generate the initial
         conformer pool. Since conformers are pruned after energy
@@ -44,6 +48,8 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
     if rmsd_threshold is None or rmsd_threshold < 0:
         rmsd_threshold = -1.
     mol = Chem.AddHs(mol)
+    if not prune_after_minimization:
+        pool_multiplier = 1
     cids = AllChem.EmbedMultipleConfs(
         mol, numConfs=n_conformers * pool_multiplier,
         pruneRmsThresh=rmsd_threshold)
@@ -65,6 +71,8 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5,
             raise ValueError("Invalid force_field '{}'.".format(force_field))
         ff.Minimize()
         energy[i] = ff.CalcEnergy()
+    if not prune_after_minimization:
+        return mol
 
     # calculate RMSD between minimized conformers
     rmsd = np.zeros((cids.size, cids.size), dtype=float)
@@ -95,7 +103,8 @@ def choose_conformers(energy, rmsd, n_conformers, rmsd_threshold=0.5):
     n_conformers : int
         Maximum number of conformers to choose.
     rmsd_threshold : float, optional (default 0.5)
-        RMSD threshold for distinguishing conformers.
+        RMSD threshold for distinguishing conformers. If None or negative,
+        no pruning is performed.
     """
     if rmsd_threshold is None or rmsd_threshold < 0:
         return np.arange(len(energy))
