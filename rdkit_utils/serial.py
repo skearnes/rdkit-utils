@@ -11,6 +11,8 @@ import gzip
 from rdkit import Chem
 from rdkit.Chem.SaltRemover import SaltRemover
 
+from rdkit_utils import PicklableMol
+
 
 def guess_mol_format(filename):
     """
@@ -57,6 +59,7 @@ class MolReader(object):
         """
         if self.remove_salts:
             mol = self.salt_remover.StripMol(mol)
+        mol = PicklableMol(mol)  # make molecule picklable
         return mol
 
     def read_mols_from_file(self, filename, mol_format=None):
