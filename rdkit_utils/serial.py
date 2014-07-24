@@ -124,30 +124,6 @@ class MolReader(object):
         parent = self.clean_mol(parent)
         yield parent
 
-    def is_same_molecule(self, a, b):
-        """
-        Test whether two molecules are conformers of the same molecule.
-
-        Test for:
-        * Identical (canonical isomeric) SMILES strings
-        * Identical compound names (if set)
-
-        Parameters
-        ----------
-        a, b : RDKit Mol
-            Molecules to compare.
-        """
-        a_name = None
-        if a.HasProp('_Name'):
-            a_name = a.GetProp('_Name')
-        b_name = None
-        if b.HasProp('_Name'):
-            b_name = b.GetProp('_Name')
-        a_smiles = Chem.MolToSmiles(a, isomericSmiles=True, canonical=True)
-        b_smiles = Chem.MolToSmiles(b, isomericSmiles=True, canonical=True)
-        assert a_smiles and b_smiles
-        return a_smiles == b_smiles and a_name == b_name
-
     def _read_mols(self, f, mol_format):
         """
         Read molecules from a file-like object.
@@ -184,6 +160,30 @@ class MolReader(object):
         else:
             raise NotImplementedError('Unrecognized mol_format "{}"'.format(
                 mol_format))
+
+    def is_same_molecule(self, a, b):
+        """
+        Test whether two molecules are conformers of the same molecule.
+
+        Test for:
+        * Identical (canonical isomeric) SMILES strings
+        * Identical compound names (if set)
+
+        Parameters
+        ----------
+        a, b : RDKit Mol
+            Molecules to compare.
+        """
+        a_name = None
+        if a.HasProp('_Name'):
+            a_name = a.GetProp('_Name')
+        b_name = None
+        if b.HasProp('_Name'):
+            b_name = b.GetProp('_Name')
+        a_smiles = Chem.MolToSmiles(a, isomericSmiles=True, canonical=True)
+        b_smiles = Chem.MolToSmiles(b, isomericSmiles=True, canonical=True)
+        assert a_smiles and b_smiles
+        return a_smiles == b_smiles and a_name == b_name
 
 
 class MolWriter(object):
