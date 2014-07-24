@@ -90,7 +90,7 @@ class TestConformerGenerator(unittest.TestCase):
         engine.minimize_conformers(mol)
         energies = engine.get_conformer_energies(mol)
         pruned = engine.prune_conformers(mol)
-        pruned_energies = engine.get_conformer_energies(mol)
+        pruned_energies = engine.get_conformer_energies(pruned)
 
         # check that the number of conformers has not increased
         assert pruned.GetNumConformers() <= mol.GetNumConformers()

@@ -213,14 +213,12 @@ class ConformerGenerator(object):
             mol.RemoveConformer(conf_ids[i])
 
         # update conformer IDs and ordering
-        confs = []
+        new = Chem.Mol(mol)
+        new.RemoveAllConformers()
         for i in keep:
             conf = mol.GetConformer(conf_ids[i])
-            confs.append(conf)
-        mol.RemoveAllConformers()
-        for i, conf in enumerate(confs):
-            mol.AddConformer(conf, assignId=True)
-        return mol
+            new.AddConformer(conf, assignId=True)
+        return new
 
     @staticmethod
     def get_conformer_rmsd(mol):
