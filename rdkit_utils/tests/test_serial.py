@@ -113,9 +113,30 @@ class TestMolReader(TestMolIO):
             mols = reader.read_mols(f, mol_format='sdf')
             assert ref_mol.ToBinary() == mols.next().ToBinary()
 
+    def test_read_multiple_sdf(self):
+        """
+        Read a multiple-molecule SDF file.
+        """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        ref_mols = []
+        for smiles in [self.aspirin_smiles, self.ibuprofen_smiles]:
+            mol = Chem.MolFromSmiles(smiles.split()[0])
+            mol.SetProp('_Name', smiles.split()[1])
+            ref_mols.append(mol)
+        with open(filename, 'wb') as f:
+            for mol in ref_mols:
+                f.write(Chem.MolToMolBlock(mol))
+                f.write('$$$$\n')
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(filename)
+        mols = list(mols)
+        assert len(mols) == 2
+        for i in xrange(len(mols)):
+            assert mols[i].ToBinary() == ref_mols[i].ToBinary()
+
     def test_read_multiple_smiles(self):
         """
-        Read multiple SMILES.
+        Read a multiple-molecule SMILES file.
         """
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
@@ -132,7 +153,7 @@ class TestMolReader(TestMolIO):
 
     def test_read_multiconformer(self):
         """
-        Read a multiconformer SDF file with multiple molecules.
+        Read a multiconformer SDF file containing multiple molecules.
         """
         mol1 = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
         mol1.SetProp('_Name', 'aspirin')
