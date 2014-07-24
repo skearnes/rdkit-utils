@@ -3,51 +3,82 @@ Tests for io.py.
 """
 import gzip
 import os
+import shutil
 import tempfile
+import unittest
 
 from rdkit import Chem
 
 from rdkit_utils import conformers, serial
 
 
-def test_read_sdf():
-    """Read SDF file."""
-    _, filename = tempfile.mkstemp(suffix='.sdf')
-    with open(filename, 'wb') as f:
-        f.write(aspirin_sdf)
-    n_atoms = Chem.MolFromMolBlock(aspirin_sdf).GetNumAtoms()
-    assert serial.read_mols_from_file(filename).next().GetNumAtoms() == n_atoms
-    os.remove(filename)
+class TestMolReader(unittest.TestCase):
+    """
+    Tests for MolReader.
+    """
+    def setUp(self):
+        """
+        Write SDF and SMILES molecules to temporary files.
+        """
+        self.temp_dir = tempfile.mkdtemp()
 
+        # SDF
+        _, self.sdf = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(self.sdf, 'wb') as f:
+            f.write(aspirin_sdf)
 
-def test_read_sdf_gz():
-    """Read compressed SDF file."""
-    _, filename = tempfile.mkstemp(suffix='.sdf.gz')
-    with gzip.open(filename, 'wb') as f:
-        f.write(aspirin_sdf)
-    n_atoms = Chem.MolFromMolBlock(aspirin_sdf).GetNumAtoms()
-    assert serial.read_mols_from_file(filename).next().GetNumAtoms() == n_atoms
-    os.remove(filename)
+        # Gzipped SDF
+        _, self.sdf_gz = tempfile.mkstemp(suffix='.sdf.gz', dir=self.temp_dir)
+        with gzip.open(self.sdf_gz, 'wb') as f:
+            f.write(aspirin_sdf)
 
+        # SMILES
+        _, self.smi = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
+        with open(self.smi, 'wb') as f:
+            f.write(aspirin_smiles)
 
-def test_read_smi():
-    """Read SMILES file."""
-    _, filename = tempfile.mkstemp(suffix='.smi')
-    with open(filename, 'wb') as f:
-        f.write(aspirin_smiles)
-    n_atoms = Chem.MolFromSmiles(aspirin_smiles.split()[0]).GetNumAtoms()
-    assert serial.read_mols_from_file(filename).next().GetNumAtoms() == n_atoms
-    os.remove(filename)
+        # Gzipped SMILES
+        _, self.smi_gz = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
+        with gzip.open(self.smi_gz, 'wb') as f:
+            f.write(aspirin_smiles)
 
+    def tearDown(self):
+        """
+        Clean up temporary files.
+        """
+        shutil.rmtree(self.temp_dir)
 
-def test_read_smi_gz():
-    """Read compressed SMILES file."""
-    _, filename = tempfile.mkstemp(suffix='.smi.gz')
-    with gzip.open(filename, 'wb') as f:
-        f.write(aspirin_smiles)
-    n_atoms = Chem.MolFromSmiles(aspirin_smiles.split()[0]).GetNumAtoms()
-    assert serial.read_mols_from_file(filename).next().GetNumAtoms() == n_atoms
-    os.remove(filename)
+    def test_read_sdf(self):
+        """
+        Read an SDF file.
+        """
+        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        mols = serial.read_mols_from_file(self.sdf)
+        assert ref_mol.ToBinary() == mols.next().ToBinary()
+
+    def test_read_sdf_gz(self):
+        """
+        Read a compressed SDF file.
+        """
+        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        mols = serial.read_mols_from_file(self.sdf_gz)
+        assert ref_mol.ToBinary() == mols.next().ToBinary()
+
+    def test_read_smi(self):
+        """
+        Read a SMILES file.
+        """
+        ref_mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        mols = serial.read_mols_from_file(self.smi)
+        assert ref_mol.ToBinary() == mols.next().ToBinary()
+
+    def test_read_smi_gz(self):
+        """
+        Read a compressed SMILES file.
+        """
+        ref_mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        mols = serial.read_mols_from_file(self.smi_gz)
+        assert ref_mol.ToBinary() == mols.next().ToBinary()
 
 
 def test_read_file_like():
@@ -127,6 +158,15 @@ def test_write_sdf_gz():
     mols = serial.read_mols_from_file(filename)
     assert mols.next().GetNumAtoms() == mol.GetNumAtoms()
     os.remove(filename)
+
+
+def test_is_same_molecule():
+    """Test MolReader.is_same_molecule."""
+    reader = serial.MolReader()
+    a = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+    b = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
+    assert reader.is_same_molecule(a, a)
+    assert not reader.is_same_molecule(a, b)
 
 aspirin_sdf = """aspirin
      RDKit
