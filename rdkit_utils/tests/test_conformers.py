@@ -25,21 +25,24 @@ class TestConformerGenerator(unittest.TestCase):
         """
         Generate molecule conformers using default parameters.
         """
-        mol = conformers.generate_conformers(self.mol)
+        engine = conformers.ConformerGenerator()
+        mol = engine.generate_conformers(self.mol)
         assert mol.GetNumConformers() > 0
 
     def test_mmff94_minimization(self):
         """
         Generate conformers and minimize with MMFF94 force field.
         """
-        mol = conformers.generate_conformers(self.mol, force_field='mmff94')
+        engine = conformers.ConformerGenerator(force_field='mmff94')
+        mol = engine.generate_conformers(self.mol)
         assert mol.GetNumConformers() > 0
 
     def test_mmff94s_minimization(self):
         """
         Generate conformers and minimize with MMFF94s force field.
         """
-        mol = conformers.generate_conformers(self.mol, force_field='mmff94s')
+        engine = conformers.ConformerGenerator(force_field='mmff94s')
+        mol = engine.generate_conformers(self.mol)
         assert mol.GetNumConformers() > 0
 
     def test_embed_molecule(self):
