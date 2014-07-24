@@ -66,7 +66,7 @@ def test_read_file_like():
 def test_read_multiconformer():
     """Read multiconformer SDF file."""
     mol = Chem.MolFromMolBlock(aspirin_sdf)
-    mol = conformers.generate_conformers(mol, n_conformers=2)
+    mol = conformers.generate_conformers(mol, max_conformers=2)
     assert mol.GetNumConformers() > 1
     _, filename = tempfile.mkstemp(suffix='.sdf')
     serial.write_mols_to_file([mol], filename)
@@ -94,9 +94,9 @@ def test_read_multiple_smiles():
 def test_read_multiple_multiconformer():
     """Read multiple multiconformer SDF file."""
     mol1 = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    mol1 = conformers.generate_conformers(mol1, n_conformers=2)
+    mol1 = conformers.generate_conformers(mol1, max_conformers=2)
     mol2 = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
-    mol2 = conformers.generate_conformers(mol2, n_conformers=2)
+    mol2 = conformers.generate_conformers(mol2, max_conformers=2)
     assert mol1.GetNumConformers() > 1
     assert mol2.GetNumConformers() > 1
     _, filename = tempfile.mkstemp(suffix='.sdf')

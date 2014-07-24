@@ -84,7 +84,7 @@ class TestConformerGenerator(unittest.TestCase):
         """
         Test ConformerGenerator.prune_conformers.
         """
-        engine = conformers.ConformerGenerator(n_conformers=10)
+        engine = conformers.ConformerGenerator(max_conformers=10)
         mol = engine.embed_molecule(self.mol)
 
         # check that there is more than one conformer
@@ -112,7 +112,7 @@ class TestConformerGenerator(unittest.TestCase):
         """
         Test ConformerGenerator.get_conformer_rmsd.
         """
-        engine = conformers.ConformerGenerator(n_conformers=10)
+        engine = conformers.ConformerGenerator(max_conformers=10)
         mol = engine.embed_molecule(self.mol)
 
         # check that there is more than one conformer

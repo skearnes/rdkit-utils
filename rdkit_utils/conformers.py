@@ -24,7 +24,7 @@ class ConformerGenerator(object):
 
     Parameters
     ----------
-    n_conformers : int, optional (default 1)
+    max_conformers : int, optional (default 1)
         Maximum number of conformers to generate (after pruning).
     rmsd_threshold : float, optional (default 0.5)
         RMSD threshold for pruning conformers. If None or negative, no
@@ -36,14 +36,14 @@ class ConformerGenerator(object):
         Whether to prune conformers by RMSD after minimization. If False,
         pool_multiplier is set to 1.
     pool_multiplier : int, optional (default 10)
-        Factor to multiply by n_conformers to generate the initial
+        Factor to multiply by max_conformers to generate the initial
         conformer pool. Since conformers are pruned after energy
         minimization, increasing the size of the pool increases the chance
-        of identifying n_conformers unique conformers.
+        of identifying max_conformers unique conformers.
     """
-    def __init__(self, n_conformers=1, rmsd_threshold=0.5, force_field='uff',
+    def __init__(self, max_conformers=1, rmsd_threshold=0.5, force_field='uff',
                  prune_after_minimization=True, pool_multiplier=10):
-        self.n_conformers = n_conformers
+        self.max_conformers = max_conformers
         if rmsd_threshold is None or rmsd_threshold < 0:
             rmsd_threshold = -1.
         self.rmsd_threshold = rmsd_threshold
@@ -102,7 +102,7 @@ class ConformerGenerator(object):
         """
         mol = Chem.AddHs(mol)
         AllChem.EmbedMultipleConfs(
-            mol, numConfs=self.n_conformers * self.pool_multiplier,
+            mol, numConfs=self.max_conformers * self.pool_multiplier,
             pruneRmsThresh=self.rmsd_threshold)
         return mol
 
@@ -193,8 +193,8 @@ class ConformerGenerator(object):
                 keep.append(i)
                 continue
 
-            # discard conformers after n_conformers is reached
-            if len(keep) >= self.n_conformers:
+            # discard conformers after max_conformers is reached
+            if len(keep) >= self.max_conformers:
                 discard.append(i)
                 continue
 
