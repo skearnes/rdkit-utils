@@ -108,18 +108,21 @@ class MolReader(object):
         A generator yielding multi-conformer RDKit Mol objects.
         """
         source = self._read_mols(f, mol_format)
-        mol = source.next()
-        for new in source:
-            if self.is_same_molecule(mol, new):
-                assert new.GetNumConformers() == 1
-                for conf in new.GetConformers():
-                    mol.AddConformer(conf)
+        parent = None
+        for mol in source:
+            assert mol.GetNumConformers() == 1
+            if parent is None:
+                parent = mol
+                continue
+            if self.is_same_molecule(parent, mol):
+                for conf in mol.GetConformers():
+                    parent.AddConformer(conf, assignId=True)
             else:
-                mol = self.clean_mol(mol)
-                yield mol
-                mol = new
-        mol = self.clean_mol(mol)
-        yield mol
+                parent = self.clean_mol(parent)
+                yield parent
+                parent = mol
+        parent = self.clean_mol(parent)
+        yield parent
 
     def is_same_molecule(self, a, b):
         """
