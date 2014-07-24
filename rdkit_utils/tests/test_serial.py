@@ -23,6 +23,9 @@ class TestMolReader(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
 
         # SDF
+        aspirin = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        aspirin.SetProp('_Name', 'aspirin')
+        aspirin_sdf = Chem.MolToMolBlock(aspirin)
         _, self.sdf = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(self.sdf, 'wb') as f:
             f.write(aspirin_sdf)
@@ -80,32 +83,37 @@ class TestMolReader(unittest.TestCase):
         mols = serial.read_mols_from_file(self.smi_gz)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
+    def test_read_file_like(self):
+        """
+        Read from a file-like object.
+        """
+        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        with open(self.sdf) as f:
+            mols = serial.read_mols(f, mol_format='sdf')
+            assert ref_mol.ToBinary() == mols.next().ToBinary()
 
-def test_read_file_like():
-    """Read from a file-like object."""
-    _, filename = tempfile.mkstemp(suffix='.sdf')
-    with open(filename, 'wb') as f:
-        f.write(aspirin_sdf)
-    n_atoms = Chem.MolFromMolBlock(aspirin_sdf).GetNumAtoms()
-    with open(filename) as f:
-        mols = serial.read_mols(f, mol_format='sdf')
-        mols = [mol for mol in mols]
-    assert mols[0].GetNumAtoms() == n_atoms
-    os.remove(filename)
+    def test_read_compressed_file_like(self):
+        """
+        Read from a file-like object using gzip.
+        """
+        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        with gzip.open(self.sdf_gz) as f:
+            mols = serial.read_mols(f, mol_format='sdf')
+            assert ref_mol.ToBinary() == mols.next().ToBinary()
 
-
-def test_read_multiconformer():
-    """Read multiconformer SDF file."""
-    mol = Chem.MolFromMolBlock(aspirin_sdf)
-    mol = conformers.generate_conformers(mol, n_conformers=2)
-    assert mol.GetNumConformers() > 1
-    _, filename = tempfile.mkstemp(suffix='.sdf')
-    serial.write_mols_to_file([mol], filename)
-    mols = serial.read_mols_from_file(filename)
-    mols = [m for m in mols]
-    assert len(mols) == 1
-    assert mols[0].GetNumConformers() == mol.GetNumConformers()
-    os.remove(filename)
+    def test_read_multiconformer(self):
+        """
+        Read a multiconformer SDF file.
+        """
+        mol = Chem.MolFromMolBlock(aspirin_sdf)
+        mol = conformers.generate_conformers(mol, n_conformers=2)
+        assert mol.GetNumConformers() > 1
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        serial.write_mols_to_file([mol], filename)
+        mols = serial.read_mols_from_file(filename)
+        mols = [m for m in mols]
+        assert len(mols) == 1
+        assert mols[0].GetNumConformers() == mol.GetNumConformers()
 
 
 def test_read_multiple_smiles():
@@ -167,39 +175,6 @@ def test_is_same_molecule():
     b = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
     assert reader.is_same_molecule(a, a)
     assert not reader.is_same_molecule(a, b)
-
-aspirin_sdf = """aspirin
-     RDKit
-
- 13 13  0  0  0  0  0  0  0  0999 V2000
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  1  0
-  2  3  2  0
-  2  4  1  0
-  4  5  1  0
-  5  6  2  0
-  6  7  1  0
-  7  8  2  0
-  8  9  1  0
-  9 10  2  0
- 10 11  1  0
- 11 12  2  0
- 11 13  1  0
- 10  5  1  0
-M  END
-"""
 
 aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
 ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
