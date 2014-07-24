@@ -240,3 +240,18 @@ class ConformerGenerator(object):
                                                 fit_conf.GetId())
                 rmsd[j, i] = rmsd[i, j]
         return rmsd
+
+
+def generate_conformers(mol, **kwargs):
+    """
+    Generate molecule conformers.
+
+    Parameters
+    ----------
+    mol : RDKit Mol
+        Molecule.
+    kwargs : dict, optional
+        Keyword arguments for ConformerGenerator.
+    """
+    engine = ConformerGenerator(**kwargs)
+    return engine(mol)
