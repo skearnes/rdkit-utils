@@ -2,7 +2,6 @@
 Tests for serial.py.
 """
 import gzip
-import os
 import shutil
 import tempfile
 import unittest
@@ -137,10 +136,12 @@ class TestMolReader(TestMolIO):
         """
         mol1 = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
         mol1.SetProp('_Name', 'aspirin')
-        mol1 = conformers.generate_conformers(mol1, n_conformers=2)
+        mol1 = conformers.generate_conformers(mol1, n_conformers=3,
+                                              pool_multiplier=1)
         mol2 = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
         mol2.SetProp('_Name', 'ibuprofen')
-        mol2 = conformers.generate_conformers(mol2, n_conformers=2)
+        mol2 = conformers.generate_conformers(mol2, n_conformers=3,
+                                              pool_multiplier=1)
         ref_mols = [mol1, mol2]
         assert mol1.GetNumConformers() > 1 and mol2.GetNumConformers > 1
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
