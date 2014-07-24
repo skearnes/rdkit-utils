@@ -170,19 +170,56 @@ class ConformerGenerator(object):
 
     def prune_conformers(self, mol):
         """
-        Prune conformers from a molecule using an RMSD threshold.
+        Prune conformers from a molecule using an RMSD threshold, starting
+        with the lowest energy conformer.
 
         Parameters
         ----------
         mol : RDKit Mol
             Molecule.
         """
+        if self.rmsd_threshold < 0 or mol.GetNumConformers() <= 1:
+            return mol
         energies = self.get_conformer_energies(mol)
         rmsd = self.get_conformer_rmsd(mol)
-        _, discard = self.select_conformers(energies, rmsd)
+
+        sort = np.argsort(energies)  # sort by increasing energy
+        keep = []  # always keep lowest-energy conformer
+        discard = []
+        for i in sort:
+
+            # always keep lowest-energy conformer
+            if len(keep) == 0:
+                keep.append(i)
+                continue
+
+            # discard conformers after n_conformers is reached
+            if len(keep) >= self.n_conformers:
+                discard.append(i)
+                continue
+
+            # get RMSD to selected conformers
+            this_rmsd = rmsd[i][np.asarray(keep, dtype=int)]
+
+            # discard conformers within the RMSD threshold
+            if np.all(this_rmsd >= self.rmsd_threshold):
+                keep.append(i)
+            else:
+                discard.append(i)
+
+        # prune conformers
         conf_ids = [conf.GetId() for conf in mol.GetConformers()]
         for i in discard:
             mol.RemoveConformer(conf_ids[i])
+
+        # update conformer IDs and ordering
+        confs = []
+        for i in keep:
+            conf = mol.GetConformer(conf_ids[i])
+            confs.append(conf)
+        mol.RemoveAllConformers()
+        for i, conf in enumerate(confs):
+            mol.AddConformer(conf, assignId=True)
         return mol
 
     @staticmethod
@@ -205,48 +242,6 @@ class ConformerGenerator(object):
                                                 fit_conf.GetId())
                 rmsd[j, i] = rmsd[i, j]
         return rmsd
-
-    def select_conformers(self, energies, rmsd):
-        """
-        Select diverse conformers starting with lowest energy.
-
-        Parameters
-        ----------
-        energies : array_like
-            Conformer energies.
-        rmsd : ndarray
-            Conformer-conformer RMSD.
-
-        Returns
-        -------
-        keep : array_like
-            Indices of conformers to keep.
-        discard : array_like
-            Indices of conformers to discard.
-        """
-        if self.rmsd_threshold < 0:
-            return range(len(energies)), []
-        if len(energies) == 1:
-            return [0], []
-        sort = np.argsort(energies)
-        keep = [sort[0]]  # always keep lowest-energy conformer
-        discard = []
-        for i in sort[1:]:
-            if len(keep) >= self.n_conformers:
-                discard.append(i)
-                continue
-
-            # get RMSD to selected conformers
-            this_rmsd = rmsd[i][np.asarray(keep, dtype=int)]
-
-            # discard conformers closer than the RMSD threshold
-            if np.all(this_rmsd >= self.rmsd_threshold):
-                keep.append(i)
-            else:
-                discard.append(i)
-        keep = np.asarray(keep, dtype=int)
-        discard = np.asarray(discard, dtype=int)
-        return keep, discard
 
 
 def generate_conformers(mol, **kwargs):
