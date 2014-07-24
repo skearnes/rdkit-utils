@@ -1,5 +1,5 @@
 """
-Tests for io.py.
+Tests for serial.py.
 """
 import gzip
 import os
@@ -12,9 +12,9 @@ from rdkit import Chem
 from rdkit_utils import conformers, serial
 
 
-class TestMolReader(unittest.TestCase):
+class TestMolIO(unittest.TestCase):
     """
-    Tests for MolReader.
+    Base test class for molecule I/O.
     """
     def setUp(self):
         """
@@ -53,12 +53,18 @@ class TestMolReader(unittest.TestCase):
         """
         shutil.rmtree(self.temp_dir)
 
+
+class TestMolReader(TestMolIO):
+    """
+    Test MolReader.
+    """
     def test_read_sdf(self):
         """
         Read an SDF file.
         """
         ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
-        mols = serial.read_mols_from_file(self.sdf)
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(self.sdf)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
     def test_read_sdf_gz(self):
@@ -66,7 +72,8 @@ class TestMolReader(unittest.TestCase):
         Read a compressed SDF file.
         """
         ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
-        mols = serial.read_mols_from_file(self.sdf_gz)
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(self.sdf_gz)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
     def test_read_smi(self):
@@ -74,7 +81,8 @@ class TestMolReader(unittest.TestCase):
         Read a SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
-        mols = serial.read_mols_from_file(self.smi)
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(self.smi)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
     def test_read_smi_gz(self):
@@ -82,7 +90,8 @@ class TestMolReader(unittest.TestCase):
         Read a compressed SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
-        mols = serial.read_mols_from_file(self.smi_gz)
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(self.smi_gz)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
     def test_read_file_like(self):
@@ -90,8 +99,9 @@ class TestMolReader(unittest.TestCase):
         Read from a file-like object.
         """
         ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
+        reader = serial.MolReader()
         with open(self.sdf) as f:
-            mols = serial.read_mols(f, mol_format='sdf')
+            mols = reader.read_mols(f, mol_format='sdf')
             assert ref_mol.ToBinary() == mols.next().ToBinary()
 
     def test_read_compressed_file_like(self):
@@ -99,75 +109,75 @@ class TestMolReader(unittest.TestCase):
         Read from a file-like object using gzip.
         """
         ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
+        reader = serial.MolReader()
         with gzip.open(self.sdf_gz) as f:
-            mols = serial.read_mols(f, mol_format='sdf')
+            mols = reader.read_mols(f, mol_format='sdf')
             assert ref_mol.ToBinary() == mols.next().ToBinary()
+
+    def test_read_multiple_smiles(self):
+        """
+        Read multiple SMILES.
+        """
+        _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for smiles in [self.aspirin_smiles, self.ibuprofen_smiles]:
+                f.write('{}\n'.format(smiles))
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(filename)
+        mols = list(mols)
+        assert len(mols) == 2
+        ref_mols = [Chem.MolFromSmiles(self.aspirin_smiles.split()[0]),
+                    Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])]
+        for i in xrange(len(mols)):
+            assert mols[i].ToBinary() == ref_mols[i].ToBinary()
 
     def test_read_multiconformer(self):
         """
-        Read a multiconformer SDF file.
+        Read a multiconformer SDF file with multiple molecules.
         """
-        mol = Chem.MolFromMolBlock(self.aspirin_sdf)
-        mol = conformers.generate_conformers(mol, n_conformers=2)
-        assert mol.GetNumConformers() > 1
+        mol1 = Chem.MolFromSmiles(self.aspirin_smiles)
+        mol1 = conformers.generate_conformers(mol1, n_conformers=2)
+        mol2 = Chem.MolFromSmiles(self.ibuprofen_smiles)
+        mol2 = conformers.generate_conformers(mol2, n_conformers=2)
+        ref_mols = [mol1, mol2]
+        assert mol1.GetNumConformers() > 1 and mol2.GetNumConformers > 1
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for mol in ref_mols:
+                for conf in mol.GetConformers():
+                    f.write(Chem.MolToMolBlock(mol, confId=conf.GetId()))
+                    f.write('$$$$\n')  # add molecule delimiter
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(filename)
+        mols = list(mols)
+        assert len(mols) == 2
+        for i in xrange(len(mols)):
+            assert mols[i].ToBinary() == ref_mols[i].ToBinary()
+
+
+class TestMolWriter(TestMolIO):
+    """
+    Test MolWriter.
+    """
+    def test_write_sdf(self):
+        """Write SDF file."""
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
+        writer = serial.MolWriter()
+        writer.open(filename)
+        writer.write([ref_mol])
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(filename)
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
+
+    def test_write_sdf_gz(self):
+        """Write compressed SDF file."""
+        _, filename = tempfile.mkstemp(suffix='.sdf.gz')
+        mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
         serial.write_mols_to_file([mol], filename)
         mols = serial.read_mols_from_file(filename)
-        mols = [m for m in mols]
-        assert len(mols) == 1
-        assert mols[0].GetNumConformers() == mol.GetNumConformers()
-
-
-def test_read_multiple_smiles():
-    """Read multiple SMILES file."""
-    _, filename = tempfile.mkstemp(suffix='.smi')
-    with open(filename, 'wb') as f:
-        f.write("{}\n{}\n".format(aspirin_smiles, ibuprofen_smiles))
-    mols = serial.read_mols_from_file(filename)
-    mols = [mol for mol in mols]
-    assert len(mols) == 2
-    assert mols[0].GetNumAtoms() == Chem.MolFromSmiles(
-        aspirin_smiles.split()[0]).GetNumAtoms()
-    assert mols[1].GetNumAtoms() == Chem.MolFromSmiles(
-        ibuprofen_smiles.split()[0]).GetNumAtoms()
-
-
-def test_read_multiple_multiconformer():
-    """Read multiple multiconformer SDF file."""
-    mol1 = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    mol1 = conformers.generate_conformers(mol1, n_conformers=2)
-    mol2 = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
-    mol2 = conformers.generate_conformers(mol2, n_conformers=2)
-    assert mol1.GetNumConformers() > 1
-    assert mol2.GetNumConformers() > 1
-    _, filename = tempfile.mkstemp(suffix='.sdf')
-    serial.write_mols_to_file([mol1, mol2], filename)
-    mols = serial.read_mols_from_file(filename)
-    mols = [mol for mol in mols]
-    assert len(mols) == 2
-    assert mols[0].GetNumConformers() == mol1.GetNumConformers()
-    assert mols[1].GetNumConformers() == mol2.GetNumConformers()
-    os.remove(filename)
-
-
-def test_write_sdf():
-    """Write SDF file."""
-    _, filename = tempfile.mkstemp(suffix='.sdf')
-    mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    serial.write_mols_to_file([mol], filename)
-    mols = serial.read_mols_from_file(filename)
-    assert mols.next().GetNumAtoms() == mol.GetNumAtoms()
-    os.remove(filename)
-
-
-def test_write_sdf_gz():
-    """Write compressed SDF file."""
-    _, filename = tempfile.mkstemp(suffix='.sdf.gz')
-    mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    serial.write_mols_to_file([mol], filename)
-    mols = serial.read_mols_from_file(filename)
-    assert mols.next().GetNumAtoms() == mol.GetNumAtoms()
-    os.remove(filename)
+        assert mols.next().GetNumAtoms() == mol.GetNumAtoms()
+        os.remove(filename)
 
 
 def test_is_same_molecule():
