@@ -135,9 +135,11 @@ class TestMolReader(TestMolIO):
         """
         Read a multiconformer SDF file with multiple molecules.
         """
-        mol1 = Chem.MolFromSmiles(self.aspirin_smiles)
+        mol1 = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        mol1.SetProp('_Name', 'aspirin')
         mol1 = conformers.generate_conformers(mol1, n_conformers=2)
-        mol2 = Chem.MolFromSmiles(self.ibuprofen_smiles)
+        mol2 = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
+        mol2.SetProp('_Name', 'ibuprofen')
         mol2 = conformers.generate_conformers(mol2, n_conformers=2)
         ref_mols = [mol1, mol2]
         assert mol1.GetNumConformers() > 1 and mol2.GetNumConformers > 1
@@ -154,13 +156,25 @@ class TestMolReader(TestMolIO):
         for i in xrange(len(mols)):
             assert mols[i].ToBinary() == ref_mols[i].ToBinary()
 
+    def test_is_same_molecule(self):
+        """
+        Test MolReader.is_same_molecule.
+        """
+        reader = serial.MolReader()
+        a = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        b = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
+        assert reader.is_same_molecule(a, a)
+        assert not reader.is_same_molecule(a, b)
+
 
 class TestMolWriter(TestMolIO):
     """
     Test MolWriter.
     """
     def test_write_sdf(self):
-        """Write SDF file."""
+        """
+        Write an SDF file.
+        """
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
         writer = serial.MolWriter()
@@ -168,22 +182,91 @@ class TestMolWriter(TestMolIO):
         writer.write([ref_mol])
         reader = serial.MolReader()
         mols = reader.read_mols_from_file(filename)
+
+        # compare molecules
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
+        # compare files
+        with open(filename) as f:
+            data = f.read()
+            try:
+                assert data == self.aspirin_sdf + '$$$$\n'
+            except AssertionError as e:
+                print data
+                print self.aspirin_sdf
+                raise e
+
     def test_write_sdf_gz(self):
-        """Write compressed SDF file."""
-        _, filename = tempfile.mkstemp(suffix='.sdf.gz')
-        mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-        serial.write_mols_to_file([mol], filename)
-        mols = serial.read_mols_from_file(filename)
-        assert mols.next().GetNumAtoms() == mol.GetNumAtoms()
-        os.remove(filename)
+        """
+        Write a compressed SDF file.
+        """
+        _, filename = tempfile.mkstemp(suffix='.sdf.gz', dir=self.temp_dir)
+        ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
+        writer = serial.MolWriter()
+        writer.open(filename)
+        writer.write([ref_mol])
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(filename)
 
+        # compare molecules
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
 
-def test_is_same_molecule():
-    """Test MolReader.is_same_molecule."""
-    reader = serial.MolReader()
-    a = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    b = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
-    assert reader.is_same_molecule(a, a)
-    assert not reader.is_same_molecule(a, b)
+        # compare files
+        with gzip.open(filename) as f:
+            data = f.read()
+            try:
+                assert data == self.aspirin_sdf + '$$$$\n'
+            except AssertionError as e:
+                print data
+                print self.aspirin_sdf
+                raise e
+
+    def test_write_smiles(self):
+        """
+        Write a SMILES file.
+        """
+        _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
+        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        writer = serial.MolWriter()
+        writer.open(filename)
+        writer.write([ref_mol])
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(filename)
+
+        # compare molecules
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
+
+        # compare files
+        with open(filename) as f:
+            data = f.read()
+            try:
+                assert data == self.aspirin_smiles.split()[0]
+            except AssertionError as e:
+                print data
+                print self.aspirin_smiles.split()[0]
+                raise e
+
+    def test_write_smiles_gz(self):
+        """
+        Write a compressed SMILES file.
+        """
+        _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
+        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        writer = serial.MolWriter()
+        writer.open(filename)
+        writer.write([ref_mol])
+        reader = serial.MolReader()
+        mols = reader.read_mols_from_file(filename)
+
+        # compare molecules
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
+
+        # compare files
+        with gzip.open(filename) as f:
+            data = f.read()
+            try:
+                assert data == self.aspirin_smiles.split()[0]
+            except AssertionError as e:
+                print data
+                print self.aspirin_smiles.split()[0]
+                raise e
