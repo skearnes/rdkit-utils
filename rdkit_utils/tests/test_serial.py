@@ -21,29 +21,31 @@ class TestMolReader(unittest.TestCase):
         Write SDF and SMILES molecules to temporary files.
         """
         self.temp_dir = tempfile.mkdtemp()
+        self.aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
+        self.ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
 
         # SDF
-        aspirin = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        aspirin = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
         aspirin.SetProp('_Name', 'aspirin')
-        aspirin_sdf = Chem.MolToMolBlock(aspirin)
+        self.aspirin_sdf = Chem.MolToMolBlock(aspirin)
         _, self.sdf = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(self.sdf, 'wb') as f:
-            f.write(aspirin_sdf)
+            f.write(self.aspirin_sdf)
 
         # Gzipped SDF
         _, self.sdf_gz = tempfile.mkstemp(suffix='.sdf.gz', dir=self.temp_dir)
         with gzip.open(self.sdf_gz, 'wb') as f:
-            f.write(aspirin_sdf)
+            f.write(self.aspirin_sdf)
 
         # SMILES
         _, self.smi = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(self.smi, 'wb') as f:
-            f.write(aspirin_smiles)
+            f.write(self.aspirin_smiles)
 
         # Gzipped SMILES
         _, self.smi_gz = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
         with gzip.open(self.smi_gz, 'wb') as f:
-            f.write(aspirin_smiles)
+            f.write(self.aspirin_smiles)
 
     def tearDown(self):
         """
@@ -55,7 +57,7 @@ class TestMolReader(unittest.TestCase):
         """
         Read an SDF file.
         """
-        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
         mols = serial.read_mols_from_file(self.sdf)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
@@ -63,7 +65,7 @@ class TestMolReader(unittest.TestCase):
         """
         Read a compressed SDF file.
         """
-        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
         mols = serial.read_mols_from_file(self.sdf_gz)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
@@ -71,7 +73,7 @@ class TestMolReader(unittest.TestCase):
         """
         Read a SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
         mols = serial.read_mols_from_file(self.smi)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
@@ -79,7 +81,7 @@ class TestMolReader(unittest.TestCase):
         """
         Read a compressed SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
         mols = serial.read_mols_from_file(self.smi_gz)
         assert ref_mol.ToBinary() == mols.next().ToBinary()
 
@@ -87,7 +89,7 @@ class TestMolReader(unittest.TestCase):
         """
         Read from a file-like object.
         """
-        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
         with open(self.sdf) as f:
             mols = serial.read_mols(f, mol_format='sdf')
             assert ref_mol.ToBinary() == mols.next().ToBinary()
@@ -96,7 +98,7 @@ class TestMolReader(unittest.TestCase):
         """
         Read from a file-like object using gzip.
         """
-        ref_mol = Chem.MolFromMolBlock(aspirin_sdf)
+        ref_mol = Chem.MolFromMolBlock(self.aspirin_sdf)
         with gzip.open(self.sdf_gz) as f:
             mols = serial.read_mols(f, mol_format='sdf')
             assert ref_mol.ToBinary() == mols.next().ToBinary()
@@ -105,7 +107,7 @@ class TestMolReader(unittest.TestCase):
         """
         Read a multiconformer SDF file.
         """
-        mol = Chem.MolFromMolBlock(aspirin_sdf)
+        mol = Chem.MolFromMolBlock(self.aspirin_sdf)
         mol = conformers.generate_conformers(mol, n_conformers=2)
         assert mol.GetNumConformers() > 1
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
@@ -175,6 +177,3 @@ def test_is_same_molecule():
     b = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
     assert reader.is_same_molecule(a, a)
     assert not reader.is_same_molecule(a, b)
-
-aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
-ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
