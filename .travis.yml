@@ -8,7 +8,7 @@ before_install:
  # Follow the pattern in rdkit/.travis.yml on GitHub
  - clone=`pwd`
  - sudo apt-get update -qq
- - sudo apt-get install -qq flex bison build-essential python-numpy python-scipy cmake python-dev sqlite3 libsqlite3-dev libboost-dev libboost-python-dev libboost-regex-dev python-imaging openjdk-7-jdk swig junit
+ - sudo apt-get install -qq flex bison build-essential python-numpy cmake python-dev sqlite3 libsqlite3-dev libboost-dev libboost-python-dev libboost-regex-dev python-imaging openjdk-7-jdk swig junit
  - cd ~
  - git clone https://github.com/rdkit/rdkit.git rdkit/rdkit
  - cd rdkit/rdkit

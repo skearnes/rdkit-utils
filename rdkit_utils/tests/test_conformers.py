@@ -2,7 +2,6 @@
 Tests for conformers.py.
 """
 import numpy as np
-from scipy.spatial.distance import is_valid_dm
 import unittest
 
 from rdkit import Chem
@@ -118,6 +117,7 @@ class TestConformerGenerator(unittest.TestCase):
         rmsd = engine.get_conformer_rmsd(mol)
 
         # check for a valid distance matrix
-        assert is_valid_dm(rmsd)
+        assert np.allclose(np.diag(rmsd), 0)
+        assert np.array_equal(rmsd, rmsd.T)
 
 test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
