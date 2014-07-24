@@ -117,7 +117,11 @@ class TestConformerGenerator(unittest.TestCase):
         rmsd = engine.get_conformer_rmsd(mol)
 
         # check for a valid distance matrix
+        assert rmsd.shape[0] == rmsd.shape[1] == mol.GetNumConformers()
         assert np.allclose(np.diag(rmsd), 0)
         assert np.array_equal(rmsd, rmsd.T)
+
+        # check for non-zero off-diagonal values
+        assert np.all(rmsd[np.triu_indices_from(rmsd, k=1)] > 0), rmsd
 
 test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
