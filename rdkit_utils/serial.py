@@ -113,7 +113,7 @@ class MolReader(object):
 
         Returns
         -------
-        A generator yielding multi-conformer RDKit Mol objects.
+        A generator yielding (possibly multi-conformer) RDKit Mol objects.
         """
         source = self._read_mols(f, mol_format)
         parent = None
@@ -150,15 +150,15 @@ class MolReader(object):
 
         Returns
         -------
-        A generator yielding single-conformer Mol objects.
+        A generator yielding RDKit Mol objects.
         """
         if mol_format == 'sdf':
             return self._read_sdf(f)
         elif mol_format == 'smi':
             return self._read_smiles(f)
         else:
-            raise NotImplementedError('Unrecognized mol_format "{}"'.format(
-                mol_format))
+            raise NotImplementedError('Unrecognized molecule format ' +
+                                      '"{}"'.format(mol_format))
 
     def _read_sdf(self, f):
         """
@@ -169,8 +169,8 @@ class MolReader(object):
         f : file
             File-like object.
         """
-        supplier = Chem.ForwardSDMolSupplier(
-            f, sanitize=self.sanitize, removeHs=self.remove_hydrogens)
+        supplier = Chem.ForwardSDMolSupplier(f, sanitize=self.sanitize,
+                                             removeHs=self.remove_hydrogens)
         for mol in supplier:
             yield mol
 
