@@ -17,9 +17,10 @@ class TestConformerGenerator(unittest.TestCase):
         """
         Set up tests.
         """
-        mol = Chem.MolFromSmiles(test_smiles.split()[0])
-        assert mol.GetNumConformers() == 0
-        self.mol = mol
+        aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
+        self.mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        self.mol.SetProp('_Name', 'aspirin')
+        assert self.mol.GetNumConformers() == 0
         self.engine = conformers.ConformerGenerator()
 
     def test_generate_conformers(self):
@@ -123,5 +124,3 @@ class TestConformerGenerator(unittest.TestCase):
 
         # check for non-zero off-diagonal values
         assert np.all(rmsd[np.triu_indices_from(rmsd, k=1)] > 0), rmsd
-
-test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
