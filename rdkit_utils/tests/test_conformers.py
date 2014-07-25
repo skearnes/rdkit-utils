@@ -20,13 +20,13 @@ class TestConformerGenerator(unittest.TestCase):
         mol = Chem.MolFromSmiles(test_smiles.split()[0])
         assert mol.GetNumConformers() == 0
         self.mol = mol
+        self.engine = conformers.ConformerGenerator()
 
     def test_generate_conformers(self):
         """
         Generate molecule conformers using default parameters.
         """
-        engine = conformers.ConformerGenerator()
-        mol = engine.generate_conformers(self.mol)
+        mol = self.engine.generate_conformers(self.mol)
         assert mol.GetNumConformers() > 0
 
     def test_mmff94_minimization(self):
@@ -49,20 +49,18 @@ class TestConformerGenerator(unittest.TestCase):
         """
         Test ConformerGenerator.embed_molecule.
         """
-        engine = conformers.ConformerGenerator()
-        mol = engine.embed_molecule(self.mol)
+        mol = self.engine.embed_molecule(self.mol)
         assert mol.GetNumConformers() > 0
 
     def test_minimize_conformers(self):
         """
         Test ConformerGenerator.minimize_conformers.
         """
-        engine = conformers.ConformerGenerator()
-        mol = engine.embed_molecule(self.mol)
+        mol = self.engine.embed_molecule(self.mol)
         assert mol.GetNumConformers() > 0
-        start = engine.get_conformer_energies(mol)
-        engine.minimize_conformers(mol)
-        finish = engine.get_conformer_energies(mol)
+        start = self.engine.get_conformer_energies(mol)
+        self.engine.minimize_conformers(mol)
+        finish = self.engine.get_conformer_energies(mol)
 
         # check that all minimized energies are lower
         assert np.all(start > finish), (start, finish)
@@ -71,10 +69,9 @@ class TestConformerGenerator(unittest.TestCase):
         """
         Test ConformerGenerator.get_conformer_energies.
         """
-        engine = conformers.ConformerGenerator()
-        mol = engine.embed_molecule(self.mol)
+        mol = self.engine.embed_molecule(self.mol)
         assert mol.GetNumConformers() > 0
-        energies = engine.get_conformer_energies(mol)
+        energies = self.engine.get_conformer_energies(mol)
 
         # check that the number of energies matches the number of
         # conformers
