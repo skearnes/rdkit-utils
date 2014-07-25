@@ -67,18 +67,6 @@ class TestMolIO(unittest.TestCase):
         """
         shutil.rmtree(self.temp_dir)
 
-def test_read_multiconformer():
-    """Read multiconformer SDF file."""
-    mol = Chem.MolFromMolBlock(aspirin_sdf)
-    mol = conformers.generate_conformers(mol, n_conformers=2)
-    assert mol.GetNumConformers() > 1
-    _, filename = tempfile.mkstemp(suffix='.sdf')
-    serial.write_mols_to_file([mol], filename)
-    mols = serial.read_mols_from_file(filename)
-    mols = [m for m in mols]
-    assert len(mols) == 1
-    assert mols[0].GetNumConformers() == mol.GetNumConformers()
-    os.remove(filename)
 
 class TestMolReader(TestMolIO):
     """
@@ -105,22 +93,12 @@ class TestMolReader(TestMolIO):
         mols = self.reader.read_mols_from_file(self.smi_filename)
         assert self.aspirin.ToBinary() == mols.next().ToBinary()
 
-def test_read_multiple_multiconformer():
-    """Read multiple multiconformer SDF file."""
-    mol1 = Chem.MolFromSmiles(aspirin_smiles.split()[0])
-    mol1 = conformers.generate_conformers(mol1, n_conformers=2)
-    mol2 = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
-    mol2 = conformers.generate_conformers(mol2, n_conformers=2)
-    assert mol1.GetNumConformers() > 1
-    assert mol2.GetNumConformers() > 1
-    _, filename = tempfile.mkstemp(suffix='.sdf')
-    serial.write_mols_to_file([mol1, mol2], filename)
-    mols = serial.read_mols_from_file(filename)
-    mols = [mol for mol in mols]
-    assert len(mols) == 2
-    assert mols[0].GetNumConformers() == mol1.GetNumConformers()
-    assert mols[1].GetNumConformers() == mol2.GetNumConformers()
-    os.remove(filename)
+    def test_read_smi_gz(self):
+        """
+        Read a compressed SMILES file.
+        """
+        mols = self.reader.read_mols_from_file(self.smi_gz_filename)
+        assert self.aspirin.ToBinary() == mols.next().ToBinary()
 
     def test_read_file_like(self):
         """
