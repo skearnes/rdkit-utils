@@ -188,6 +188,18 @@ class TestMolReader(TestMolIO):
         assert reader.is_same_molecule(a, a)
         assert not reader.is_same_molecule(a, b)
 
+    def test_hydrogen_treament(self):
+        """
+        Test hydrogen treatment.
+        """
+        assert False
+
+    def test_salt_treatment(self):
+        """
+        Test salt treatment.
+        """
+        assert False
+
 
 class TestMolWriter(TestMolIO):
     """
