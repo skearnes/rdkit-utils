@@ -16,6 +16,12 @@ class ConformerGenerator(object):
     """
     Generate molecule conformers.
 
+    Procedure
+    ---------
+    1. Generate a pool of conformers.
+    2. Minimize conformers.
+    3. Prune conformers using an RMSD threshold.
+
     References
     ----------
     * http://rdkit.org/docs/GettingStartedInPython.html
@@ -32,9 +38,6 @@ class ConformerGenerator(object):
     force_field : str, optional (default 'uff')
         Force field to use for conformer energy calculation and
         minimization. Options are 'uff', 'mmff94', and 'mmff94s'.
-    prune_after_minimization : bool, optional (default True)
-        Whether to prune conformers by RMSD after minimization instead of
-        before.
     pool_multiplier : int, optional (default 10)
         Factor to multiply by max_conformers to generate the initial
         conformer pool. Since conformers are pruned after energy
@@ -42,13 +45,12 @@ class ConformerGenerator(object):
         of identifying max_conformers unique conformers.
     """
     def __init__(self, max_conformers=1, rmsd_threshold=0.5, force_field='uff',
-                 prune_after_minimization=True, pool_multiplier=10):
+                 pool_multiplier=10):
         self.max_conformers = max_conformers
         if rmsd_threshold is None or rmsd_threshold < 0:
             rmsd_threshold = -1.
         self.rmsd_threshold = rmsd_threshold
         self.force_field = force_field
-        self.prune_after_minimization = prune_after_minimization
         self.pool_multiplier = pool_multiplier
 
     def __call__(self, mol):
@@ -87,12 +89,8 @@ class ConformerGenerator(object):
             raise RuntimeError(msg)
 
         # minimization and pruning
-        if self.prune_after_minimization:
-            self.minimize_conformers(mol)
-            mol = self.prune_conformers(mol)
-        else:
-            mol = self.prune_conformers(mol)
-            self.minimize_conformers(mol)
+        self.minimize_conformers(mol)
+        mol = self.prune_conformers(mol)
 
         return mol
 
@@ -107,12 +105,7 @@ class ConformerGenerator(object):
         """
         mol = Chem.AddHs(mol)  # add hydrogens
         n_confs = self.max_conformers * self.pool_multiplier
-        if self.prune_after_minimization:
-            rmsd_threshold = -1.
-        else:
-            rmsd_threshold = self.rmsd_threshold
-        AllChem.EmbedMultipleConfs(mol, numConfs=n_confs,
-                                   pruneRmsThresh=rmsd_threshold)
+        AllChem.EmbedMultipleConfs(mol, numConfs=n_confs, pruneRmsThresh=-1.)
         return mol
 
     def get_molecule_force_field(self, mol, conf_id=None, **kwargs):
