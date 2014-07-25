@@ -39,10 +39,18 @@ class MolReader(object):
 
     Parameters
     ----------
+    sanitize : bool, optional (default True)
+        Whether to sanitize molecules. Note that sanitization is triggered
+        automatically if hydrogens are removed.
+    remove_hydrogens : bool, optional (default False)
+        Whether to remove hydrogens from molecules.
     remove_salts : bool, optional (default True)
         Whether to remove salts from molecules.
     """
-    def __init__(self, remove_salts=True):
+    def __init__(self, sanitize=True, remove_hydrogens=False,
+                 remove_salts=True):
+        self.sanitize = sanitize
+        self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
         self.salt_remover = SaltRemover()
 
@@ -143,23 +151,56 @@ class MolReader(object):
         A generator yielding single-conformer Mol objects.
         """
         if mol_format == 'sdf':
-            for mol in Chem.ForwardSDMolSupplier(f):
-                yield mol
+            return self._read_sdf(f)
         elif mol_format == 'smi':
-            for line in f.readlines():
-                line = line.strip().split()
-                if len(line) > 1:
-                    smiles, name = line
-                else:
-                    smiles = line
-                    name = None
-                mol = Chem.MolFromSmiles(smiles)
-                if name is not None:
-                    mol.SetProp('_Name', name)
-                yield mol
+            return self._read_smiles(f)
         else:
             raise NotImplementedError('Unrecognized mol_format "{}"'.format(
                 mol_format))
+
+    def _read_sdf(self, f):
+        """
+        Read SDF molecules from a file-like object.
+
+        Parameters
+        ----------
+        f : file
+            File-like object.
+        """
+        supplier = Chem.ForwardSDMolSupplier(
+            f, sanitize=self.sanitize, removeHs=self.remove_hydrogens)
+        for mol in supplier:
+            yield mol
+
+    def _read_smiles(self, f):
+        """
+        Read SMILES molecules from a file-like object.
+
+        Parameters
+        ----------
+        f : file
+            File-like object.
+        """
+        for line in f.readlines():
+            line = line.strip().split()
+            if len(line) > 1:
+                smiles, name = line
+            else:
+                smiles = line
+                name = None
+            if self.remove_hydrogens:
+                mol = Chem.MolFromSmiles(smiles)
+            else:
+
+                # sanitization is normally triggered by removing
+                # hydrogens
+                mol = Chem.MolFromSmiles(smiles, sanitize=False)
+                if self.sanitize:
+                    Chem.SanitizeMol(mol)
+
+            if name is not None:
+                mol.SetProp('_Name', name)
+            yield mol
 
     def is_same_molecule(self, a, b):
         """
