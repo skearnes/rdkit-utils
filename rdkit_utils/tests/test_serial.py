@@ -20,13 +20,22 @@ class TestMolIO(unittest.TestCase):
         Write SDF and SMILES molecules to temporary files.
         """
         self.temp_dir = tempfile.mkdtemp()
+
+        # aspirin
         self.aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
+        self.aspirin = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        self.aspirin.SetProp('_Name', 'aspirin')
+        self.aspirin_sdf = Chem.MolToMolBlock(self.aspirin)
+
+        # ibuprofen
         self.ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
+        self.ibuprofen = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
+        self.ibuprofen.SetProp('_Name', 'ibuprofen')
+        self.ibuprofen_sdf = Chem.MolToMolBlock(self.ibuprofen)
+
+        self.ref_mols = [self.aspirin, self.ibuprofen]
 
         # SDF
-        aspirin = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
-        aspirin.SetProp('_Name', 'aspirin')
-        self.aspirin_sdf = Chem.MolToMolBlock(aspirin)
         _, self.sdf = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(self.sdf, 'wb') as f:
             f.write(self.aspirin_sdf)
@@ -118,21 +127,16 @@ class TestMolReader(TestMolIO):
         Read a multiple-molecule SDF file.
         """
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
-        ref_mols = []
-        for smiles in [self.aspirin_smiles, self.ibuprofen_smiles]:
-            mol = Chem.MolFromSmiles(smiles.split()[0])
-            mol.SetProp('_Name', smiles.split()[1])
-            ref_mols.append(mol)
         with open(filename, 'wb') as f:
-            for mol in ref_mols:
-                f.write(Chem.MolToMolBlock(mol))
-                f.write('$$$$\n')
+            for sdf in [self.aspirin_sdf, self.ibuprofen_sdf]:
+                f.write(sdf)
+                f.write('$$$$\n')  # add molecule delimiter
         reader = serial.MolReader()
         mols = reader.read_mols_from_file(filename)
         mols = list(mols)
         assert len(mols) == 2
         for i in xrange(len(mols)):
-            assert mols[i].ToBinary() == ref_mols[i].ToBinary()
+            assert mols[i].ToBinary() == self.ref_mols[i].ToBinary()
 
     def test_read_multiple_smiles(self):
         """
@@ -146,25 +150,19 @@ class TestMolReader(TestMolIO):
         mols = reader.read_mols_from_file(filename)
         mols = list(mols)
         assert len(mols) == 2
-        ref_mols = [Chem.MolFromSmiles(self.aspirin_smiles.split()[0]),
-                    Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])]
         for i in xrange(len(mols)):
-            assert mols[i].ToBinary() == ref_mols[i].ToBinary()
+            assert mols[i].ToBinary() == self.ref_mols[i].ToBinary()
 
     def test_read_multiconformer(self):
         """
         Read a multiconformer SDF file containing multiple molecules.
         """
-        mol1 = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
-        mol1.SetProp('_Name', 'aspirin')
-        mol1 = conformers.generate_conformers(mol1, n_conformers=3,
-                                              pool_multiplier=1)
-        mol2 = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
-        mol2.SetProp('_Name', 'ibuprofen')
-        mol2 = conformers.generate_conformers(mol2, n_conformers=3,
-                                              pool_multiplier=1)
-        ref_mols = [mol1, mol2]
-        assert mol1.GetNumConformers() > 1 and mol2.GetNumConformers > 1
+        ref_mols = []
+        for mol in self.ref_mols:
+            expanded = conformers.generate_conformers(mol, n_conformers=3,
+                                                      pool_multiplier=1)
+            assert expanded.GetNumConformers() > 1
+            ref_mols.append(expanded)
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             for mol in ref_mols:
@@ -183,10 +181,8 @@ class TestMolReader(TestMolIO):
         Test MolReader.is_same_molecule.
         """
         reader = serial.MolReader()
-        a = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
-        b = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
-        assert reader.is_same_molecule(a, a)
-        assert not reader.is_same_molecule(a, b)
+        assert reader.is_same_molecule(self.aspirin, self.aspirin)
+        assert not reader.is_same_molecule(self.aspirin, self.ibuprofen)
 
     def test_hydrogen_treament(self):
         """
