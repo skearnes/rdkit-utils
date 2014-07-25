@@ -22,6 +22,9 @@ class ConformerGenerator(object):
     2. Minimize conformers.
     3. Prune conformers using an RMSD threshold.
 
+    Note that pruning is done _after_ minimization, which differs from the
+    protocol described in the references.
+
     References
     ----------
     * http://rdkit.org/docs/GettingStartedInPython.html
