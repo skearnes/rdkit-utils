@@ -39,17 +39,12 @@ class MolReader(object):
 
     Parameters
     ----------
-    sanitize : bool, optional (default True)
-        Whether to sanitize molecules. Note that sanitization is triggered
-        automatically if hydrogens are removed.
     remove_hydrogens : bool, optional (default False)
         Whether to remove hydrogens from molecules.
     remove_salts : bool, optional (default True)
         Whether to remove salts from molecules.
     """
-    def __init__(self, sanitize=True, remove_hydrogens=False,
-                 remove_salts=True):
-        self.sanitize = sanitize
+    def __init__(self, remove_hydrogens=False, remove_salts=True):
         self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
         self.salt_remover = SaltRemover()
@@ -169,8 +164,7 @@ class MolReader(object):
         f : file
             File-like object.
         """
-        supplier = Chem.ForwardSDMolSupplier(f, sanitize=self.sanitize,
-                                             removeHs=self.remove_hydrogens)
+        supplier = Chem.ForwardSDMolSupplier(f, removeHs=self.remove_hydrogens)
         for mol in supplier:
             yield mol
 
@@ -197,8 +191,7 @@ class MolReader(object):
                 # sanitization is normally triggered by removing
                 # hydrogens
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
-                if self.sanitize:
-                    Chem.SanitizeMol(mol)
+                Chem.SanitizeMol(mol)
 
             if name is not None:
                 mol.SetProp('_Name', name)
