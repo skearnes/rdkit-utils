@@ -24,18 +24,23 @@ class TestMolIO(unittest.TestCase):
         # aspirin
         # the molecule is converted to SDF and then read again because SDF
         # blocks are treated as 3D by default (also for ibuprofen)
-        self.aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
-        aspirin = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
+        aspirin = Chem.MolFromSmiles(aspirin_smiles.split()[0])
         aspirin.SetProp('_Name', 'aspirin')
-        self.aspirin_sdf = Chem.MolToMolBlock(aspirin)
-        self.aspirin = Chem.MolFromMolBlock(self.aspirin_sdf)
+        aspirin_sdf = Chem.MolToMolBlock(aspirin)
+        self.aspirin = Chem.MolFromMolBlock(aspirin_sdf)
+        self.aspirin_h = Chem.AddHs(aspirin)  # add hydrogens
+        aspirin_salt = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)[O-].[Na+]')
+        aspirin_salt.SetProp('_Name', 'aspirin sodium')
+        self.aspirin_salt = Chem.MolFromMolBlock(
+            Chem.MolToMolBlock(aspirin_salt))
 
         # ibuprofen
-        self.ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
-        ibuprofen = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
+        ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
+        ibuprofen = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
         ibuprofen.SetProp('_Name', 'ibuprofen')
-        self.ibuprofen_sdf = Chem.MolToMolBlock(ibuprofen)
-        self.ibuprofen = Chem.MolFromMolBlock(self.ibuprofen_sdf)
+        ibuprofen_sdf = Chem.MolToMolBlock(ibuprofen)
+        self.ibuprofen = Chem.MolFromMolBlock(ibuprofen_sdf)
 
         self.ref_mols = [self.aspirin, self.ibuprofen]
 
@@ -43,25 +48,37 @@ class TestMolIO(unittest.TestCase):
         _, self.sdf_filename = tempfile.mkstemp(suffix='.sdf',
                                                 dir=self.temp_dir)
         with open(self.sdf_filename, 'wb') as f:
-            f.write(self.aspirin_sdf)
+            f.write(aspirin_sdf)
+
+        # SDF with hydrogens
+        _, self.sdf_h_filename = tempfile.mkstemp(suffix='.sdf',
+                                                  dir=self.temp_dir)
+        with open(self.sdf_h_filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin_h))
+
+        # SDF with salt
+        _, self.sdf_salt_filename = tempfile.mkstemp(suffix='.sdf',
+                                                     dir=self.temp_dir)
+        with open(self.sdf_salt_filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin_salt))
 
         # Gzipped SDF
         _, self.sdf_gz_filename = tempfile.mkstemp(suffix='.sdf.gz',
                                                    dir=self.temp_dir)
         with gzip.open(self.sdf_gz_filename, 'wb') as f:
-            f.write(self.aspirin_sdf)
+            f.write(aspirin_sdf)
 
         # SMILES
         _, self.smi_filename = tempfile.mkstemp(suffix='.smi',
                                                 dir=self.temp_dir)
         with open(self.smi_filename, 'wb') as f:
-            f.write(self.aspirin_smiles)
+            f.write(aspirin_smiles)
 
         # Gzipped SMILES
         _, self.smi_gz_filename = tempfile.mkstemp(suffix='.smi.gz',
                                                    dir=self.temp_dir)
         with gzip.open(self.smi_gz_filename, 'wb') as f:
-            f.write(self.aspirin_smiles)
+            f.write(aspirin_smiles)
 
         self.reader = serial.MolReader()
 
@@ -94,14 +111,15 @@ class TestMolReader(TestMolIO):
         """
         Read a SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         mols = self.reader.read_mols_from_file(self.smi_filename)
         assert mols.next().ToBinary() == ref_mol.ToBinary()
+
     def test_read_smi_gz(self):
         """
         Read a compressed SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         mols = self.reader.read_mols_from_file(self.smi_gz_filename)
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
@@ -127,7 +145,8 @@ class TestMolReader(TestMolIO):
         """
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(filename, 'wb') as f:
-            for sdf in [self.aspirin_sdf, self.ibuprofen_sdf]:
+            for mol in self.ref_mols:
+                sdf = Chem.MolToMolBlock(mol)
                 f.write(sdf)
                 f.write('$$$$\n')  # add molecule delimiter
         mols = self.reader.read_mols_from_file(filename)
@@ -141,13 +160,15 @@ class TestMolReader(TestMolIO):
         Read a multiple-molecule SMILES file.
         """
         ref_mols = []
-        for smiles in [self.aspirin_smiles, self.ibuprofen_smiles]:
-            mol = Chem.MolFromSmiles(smiles.split()[0])
+        for mol in self.ref_mols:
+            mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
             ref_mols.append(mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
-            for smiles in [self.aspirin_smiles, self.ibuprofen_smiles]:
-                f.write('{}\n'.format(smiles))
+            for mol in self.ref_mols:
+                smiles = Chem.MolToSmiles(mol)
+                name = mol.GetProp('_Name')
+                f.write('{}\t{}\n'.format(smiles, name))
         mols = self.reader.read_mols_from_file(filename)
         mols = list(mols)
         assert len(mols) == 2
@@ -184,21 +205,36 @@ class TestMolReader(TestMolIO):
         assert self.reader.is_same_molecule(self.aspirin, self.aspirin)
         assert not self.reader.is_same_molecule(self.aspirin, self.ibuprofen)
 
-    def test_sanitization(self):
+    def test_no_remove_hydrogens(self):
         """
-        Test sanitization.
+        Test hydrogen retention.
         """
-        reader = serial.Chem
+        reader = serial.MolReader(remove_hydrogens=False)
+        mols = reader.read_mols_from_file(self.sdf_h_filename)
+        assert mols.next().ToBinary() == self.aspirin_h.ToBinary()
 
-    def test_hydrogen_treament(self):
+    def test_remove_hydrogens(self):
         """
-        Test hydrogen treatment.
+        Test hydrogen removal.
+        """
+        reader = serial.MolReader(remove_hydrogens=True)
+        mols = reader.read_mols_from_file(self.sdf_h_filename)
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
+
+    def test_remove_salts(self):
+        """
+        Test salt removal.
         """
         assert False
 
-    def test_salt_treatment(self):
+    def test_no_remove_salts(self):
         """
-        Test salt treatment.
+        Test salt retention.
+        """
+
+    def test_stereo(self):
+        """
+        Test stereochemistry preservation.
         """
         assert False
 
@@ -301,3 +337,9 @@ class TestMolWriter(TestMolIO):
                 print data
                 print self.aspirin_smiles
                 raise e
+
+    def test_stereo(self):
+        """
+        Test stereochemistry preservation.
+        """
+        assert False
