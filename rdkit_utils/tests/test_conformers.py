@@ -30,6 +30,9 @@ class TestConformerGenerator(unittest.TestCase):
         mol = self.engine.generate_conformers(self.mol)
         assert mol.GetNumConformers() > 0
 
+        # check that molecule names are retained
+        assert self.mol.GetProp('_Name') == mol.GetProp('_Name')
+
     def test_mmff94_minimization(self):
         """
         Generate conformers and minimize with MMFF94 force field.
