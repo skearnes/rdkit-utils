@@ -22,16 +22,20 @@ class TestMolIO(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
 
         # aspirin
+        # the molecule is converted to SDF and then read again because SDF
+        # blocks are treated as 3D by default (also for ibuprofen)
         self.aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
-        self.aspirin = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
-        self.aspirin.SetProp('_Name', 'aspirin')
-        self.aspirin_sdf = Chem.MolToMolBlock(self.aspirin)
+        aspirin = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
+        aspirin.SetProp('_Name', 'aspirin')
+        self.aspirin_sdf = Chem.MolToMolBlock(aspirin)
+        self.aspirin = Chem.MolFromMolBlock(self.aspirin_sdf)
 
         # ibuprofen
         self.ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
-        self.ibuprofen = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
-        self.ibuprofen.SetProp('_Name', 'ibuprofen')
-        self.ibuprofen_sdf = Chem.MolToMolBlock(self.ibuprofen)
+        ibuprofen = Chem.MolFromSmiles(self.ibuprofen_smiles.split()[0])
+        ibuprofen.SetProp('_Name', 'ibuprofen')
+        self.ibuprofen_sdf = Chem.MolToMolBlock(ibuprofen)
+        self.ibuprofen = Chem.MolFromMolBlock(self.ibuprofen_sdf)
 
         self.ref_mols = [self.aspirin, self.ibuprofen]
 
@@ -77,28 +81,29 @@ class TestMolReader(TestMolIO):
         Read an SDF file.
         """
         mols = self.reader.read_mols_from_file(self.sdf_filename)
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_sdf_gz(self):
         """
         Read a compressed SDF file.
         """
         mols = self.reader.read_mols_from_file(self.sdf_gz_filename)
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_smi(self):
         """
         Read a SMILES file.
         """
+        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
         mols = self.reader.read_mols_from_file(self.smi_filename)
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
-
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
     def test_read_smi_gz(self):
         """
         Read a compressed SMILES file.
         """
+        ref_mol = Chem.MolFromSmiles(self.aspirin_smiles.split()[0])
         mols = self.reader.read_mols_from_file(self.smi_gz_filename)
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
 
     def test_read_file_like(self):
         """
@@ -106,7 +111,7 @@ class TestMolReader(TestMolIO):
         """
         with open(self.sdf_filename) as f:
             mols = self.reader.read_mols(f, mol_format='sdf')
-            assert self.aspirin.ToBinary() == mols.next().ToBinary()
+            assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_compressed_file_like(self):
         """
@@ -114,7 +119,7 @@ class TestMolReader(TestMolIO):
         """
         with gzip.open(self.sdf_gz_filename) as f:
             mols = self.reader.read_mols(f, mol_format='sdf')
-            assert self.aspirin.ToBinary() == mols.next().ToBinary()
+            assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_multiple_sdf(self):
         """
@@ -135,6 +140,10 @@ class TestMolReader(TestMolIO):
         """
         Read a multiple-molecule SMILES file.
         """
+        ref_mols = []
+        for smiles in [self.aspirin_smiles, self.ibuprofen_smiles]:
+            mol = Chem.MolFromSmiles(smiles.split()[0])
+            ref_mols.append(mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             for smiles in [self.aspirin_smiles, self.ibuprofen_smiles]:
@@ -143,16 +152,17 @@ class TestMolReader(TestMolIO):
         mols = list(mols)
         assert len(mols) == 2
         for i in xrange(len(mols)):
-            assert mols[i].ToBinary() == self.ref_mols[i].ToBinary()
+            assert mols[i].ToBinary() == ref_mols[i].ToBinary()
 
     def test_read_multiconformer(self):
         """
         Read a multiconformer SDF file containing multiple molecules.
         """
         ref_mols = []
+        engine = conformers.ConformerGenerator(max_conformers=3,
+                                               pool_multiplier=1)
         for mol in self.ref_mols:
-            expanded = conformers.generate_conformers(mol, n_conformers=3,
-                                                      pool_multiplier=1)
+            expanded = engine.generate_conformers(mol)
             assert expanded.GetNumConformers() > 1
             ref_mols.append(expanded)
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
@@ -214,7 +224,7 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
         # compare files
         with open(filename) as f:
@@ -236,7 +246,7 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
         # compare files
         with gzip.open(filename) as f:
@@ -258,7 +268,7 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
         # compare files
         with open(filename) as f:
@@ -280,7 +290,7 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
-        assert self.aspirin.ToBinary() == mols.next().ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
         # compare files
         with gzip.open(filename) as f:
