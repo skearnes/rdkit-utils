@@ -86,14 +86,13 @@ class ConformerGenerator(object):
                 msg += '.'
             raise RuntimeError(msg)
         self.minimize_conformers(mol)
-        if not self.prune_after_minimization:
-            return mol
-        mol = self.prune_conformers(mol)
+        if self.prune_after_minimization:
+            mol = self.prune_conformers(mol)
         return mol
 
     def embed_molecule(self, mol):
         """
-        Generate initial conformer pool.
+        Generate conformers, possibly with pruning.
 
         Parameters
         ----------
@@ -101,9 +100,13 @@ class ConformerGenerator(object):
             Molecule.
         """
         mol = Chem.AddHs(mol)
+        if self.prune_after_minimization:
+            rmsd_threshold = -1.
+        else:
+            rmsd_threshold = self.rmsd_threshold
         AllChem.EmbedMultipleConfs(
             mol, numConfs=self.max_conformers * self.pool_multiplier,
-            pruneRmsThresh=self.rmsd_threshold)
+            pruneRmsThresh=rmsd_threshold)
         return mol
 
     def get_molecule_force_field(self, mol, conf_id=None, **kwargs):
@@ -177,6 +180,11 @@ class ConformerGenerator(object):
         ----------
         mol : RDKit Mol
             Molecule.
+
+        Returns
+        -------
+        A new RDKit Mol containing the chosen conformers, sorted by
+        increasing energy.
         """
         if self.rmsd_threshold < 0 or mol.GetNumConformers() <= 1:
             return mol
@@ -207,14 +215,11 @@ class ConformerGenerator(object):
             else:
                 discard.append(i)
 
-        # prune conformers
-        conf_ids = [conf.GetId() for conf in mol.GetConformers()]
-        for i in discard:
-            mol.RemoveConformer(conf_ids[i])
-
-        # update conformer IDs and ordering
+        # create a new molecule to hold the chosen conformers
+        # this ensures proper conformer IDs and energy-based ordering
         new = Chem.Mol(mol)
         new.RemoveAllConformers()
+        conf_ids = [conf.GetId() for conf in mol.GetConformers()]
         for i in keep:
             conf = mol.GetConformer(conf_ids[i])
             new.AddConformer(conf, assignId=True)
