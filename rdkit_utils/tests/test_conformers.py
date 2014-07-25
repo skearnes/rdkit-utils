@@ -81,11 +81,26 @@ class TestConformerGenerator(unittest.TestCase):
         # conformers
         assert len(energies) == mol.GetNumConformers()
 
-    def test_prune_conformers(self):
+    def test_prune_conformers_after_minimization(self):
+        """
+        Test conformer pruning after minimization.
+        """
+        engine = conformers.ConformerGenerator(max_conformers=10,
+                                               prune_after_minimization=True)
+        self._pruning_tests(engine)
+
+    def test_prune_conformers_before_minimization(self):
+        """
+        Test conformer pruning before minimization.
+        """
+        engine = conformers.ConformerGenerator(max_conformers=10,
+                                               prune_after_minimization=False)
+        self._pruning_tests(engine)
+
+    def _pruning_tests(self, engine):
         """
         Test ConformerGenerator.prune_conformers.
         """
-        engine = conformers.ConformerGenerator(max_conformers=10)
         mol = engine.embed_molecule(self.mol)
 
         # check that there is more than one conformer
@@ -94,6 +109,9 @@ class TestConformerGenerator(unittest.TestCase):
         energies = engine.get_conformer_energies(mol)
         pruned = engine.prune_conformers(mol)
         pruned_energies = engine.get_conformer_energies(pruned)
+
+        # check that the number of conformers is not to large
+        assert pruned.GetNumConformers() <= engine.max_conformers
 
         # check that the number of conformers has not increased
         assert pruned.GetNumConformers() <= mol.GetNumConformers()
