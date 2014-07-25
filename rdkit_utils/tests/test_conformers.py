@@ -1,65 +1,132 @@
 """
 Tests for conformers.py.
 """
+import numpy as np
+import unittest
+
 from rdkit import Chem
 
 from rdkit_utils import conformers
 
 
-def test_generate_conformers():
-    """Generate molecule conformers."""
-    mol = Chem.MolFromSmiles(test_smiles.split()[0])
-    assert mol.GetNumConformers() == 0
-    mol = conformers.generate_conformers(mol)
-    assert mol.GetNumConformers() > 0
+class TestConformerGenerator(unittest.TestCase):
+    """
+    Tests for ConformerGenerator.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
+        self.mol = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        self.mol.SetProp('_Name', 'aspirin')
+        assert self.mol.GetNumConformers() == 0
+        self.engine = conformers.ConformerGenerator()
 
+    def test_generate_conformers(self):
+        """
+        Generate molecule conformers using default parameters.
+        """
+        mol = self.engine.generate_conformers(self.mol)
+        assert mol.GetNumConformers() > 0
 
-def test_mmff94_minimization():
-    """Generate conformers and minimize with MMFF94."""
-    mol = Chem.MolFromSmiles(test_smiles.split()[0])
-    assert mol.GetNumConformers() == 0
-    mol = conformers.generate_conformers(mol, force_field='mmff94')
-    assert mol.GetNumConformers() > 0
+        # check that molecule names are retained
+        assert self.mol.GetProp('_Name') == mol.GetProp('_Name')
 
+    def test_mmff94_minimization(self):
+        """
+        Generate conformers and minimize with MMFF94 force field.
+        """
+        engine = conformers.ConformerGenerator(force_field='mmff94')
+        mol = engine.generate_conformers(self.mol)
+        assert mol.GetNumConformers() > 0
 
-def test_mmff94s_minimization():
-    """Generate conformers and minimize with MMFF94s."""
-    mol = Chem.MolFromSmiles(test_smiles.split()[0])
-    assert mol.GetNumConformers() == 0
-    mol = conformers.generate_conformers(mol, force_field='mmff94s')
-    assert mol.GetNumConformers() > 0
+    def test_mmff94s_minimization(self):
+        """
+        Generate conformers and minimize with MMFF94s force field.
+        """
+        engine = conformers.ConformerGenerator(force_field='mmff94s')
+        mol = engine.generate_conformers(self.mol)
+        assert mol.GetNumConformers() > 0
 
-test_sdf = """aspirin
-     RDKit
+    def test_embed_molecule(self):
+        """
+        Test ConformerGenerator.embed_molecule.
+        """
+        mol = self.engine.embed_molecule(self.mol)
+        assert mol.GetNumConformers() > 0
 
- 13 13  0  0  0  0  0  0  0  0999 V2000
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  1  0
-  2  3  2  0
-  2  4  1  0
-  4  5  1  0
-  5  6  2  0
-  6  7  1  0
-  7  8  2  0
-  8  9  1  0
-  9 10  2  0
- 10 11  1  0
- 11 12  2  0
- 11 13  1  0
- 10  5  1  0
-M  END
-"""
+    def test_minimize_conformers(self):
+        """
+        Test ConformerGenerator.minimize_conformers.
+        """
+        mol = self.engine.embed_molecule(self.mol)
+        assert mol.GetNumConformers() > 0
+        start = self.engine.get_conformer_energies(mol)
+        self.engine.minimize_conformers(mol)
+        finish = self.engine.get_conformer_energies(mol)
 
-test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
+        # check that all minimized energies are lower
+        assert np.all(start > finish), (start, finish)
+
+    def test_get_conformer_energies(self):
+        """
+        Test ConformerGenerator.get_conformer_energies.
+        """
+        mol = self.engine.embed_molecule(self.mol)
+        assert mol.GetNumConformers() > 0
+        energies = self.engine.get_conformer_energies(mol)
+
+        # check that the number of energies matches the number of
+        # conformers
+        assert len(energies) == mol.GetNumConformers()
+
+    def test_prune_conformers(self):
+        """
+        Test ConformerGenerator.prune_conformers.
+        """
+        engine = conformers.ConformerGenerator(max_conformers=10)
+        mol = engine.embed_molecule(self.mol)
+
+        # check that there is more than one conformer
+        assert mol.GetNumConformers() > 1
+        engine.minimize_conformers(mol)
+        energies = engine.get_conformer_energies(mol)
+        pruned = engine.prune_conformers(mol)
+        pruned_energies = engine.get_conformer_energies(pruned)
+
+        # check that the number of conformers is not to large
+        assert pruned.GetNumConformers() <= engine.max_conformers
+
+        # check that the number of conformers has not increased
+        assert pruned.GetNumConformers() <= mol.GetNumConformers()
+
+        # check that lowest energy conformer was selected
+        assert np.allclose(min(energies), min(pruned_energies))
+
+        # check that pruned energies are taken from the original set
+        for energy in pruned_energies:
+            assert np.allclose(min(np.fabs(energies - energy)), 0)
+
+        # check that conformers are in order of increasing energy
+        sort = np.argsort(pruned_energies)
+        assert np.array_equal(sort, np.arange(len(pruned_energies))), sort
+
+    def test_get_conformer_rmsd(self):
+        """
+        Test ConformerGenerator.get_conformer_rmsd.
+        """
+        engine = conformers.ConformerGenerator(max_conformers=10)
+        mol = engine.embed_molecule(self.mol)
+
+        # check that there is more than one conformer
+        assert mol.GetNumConformers() > 1
+        rmsd = engine.get_conformer_rmsd(mol)
+
+        # check for a valid distance matrix
+        assert rmsd.shape[0] == rmsd.shape[1] == mol.GetNumConformers()
+        assert np.allclose(np.diag(rmsd), 0)
+        assert np.array_equal(rmsd, rmsd.T)
+
+        # check for non-zero off-diagonal values
+        assert np.all(rmsd[np.triu_indices_from(rmsd, k=1)] > 0), rmsd
