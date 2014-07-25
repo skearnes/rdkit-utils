@@ -118,13 +118,15 @@ class MolReader(object):
         source = self._read_mols(f, mol_format)
         parent = None
         for mol in source:
-            assert mol.GetNumConformers() == 1
             if parent is None:
                 parent = mol
                 continue
             if self.is_same_molecule(parent, mol):
-                for conf in mol.GetConformers():
-                    parent.AddConformer(conf, assignId=True)
+                if mol.GetNumConformers():
+                    for conf in mol.GetConformers():
+                        parent.AddConformer(conf, assignId=True)
+                else:
+                    continue  # skip duplicate molecules without conformers
             else:
                 parent = self.clean_mol(parent)
                 yield parent
