@@ -24,8 +24,8 @@ class TestMolIO(unittest.TestCase):
         # aspirin
         # the molecule is converted to SDF and then read again because SDF
         # blocks are treated as 3D by default (also for ibuprofen)
-        aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O aspirin'
-        aspirin = Chem.MolFromSmiles(aspirin_smiles.split()[0])
+        aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
+        aspirin = Chem.MolFromSmiles(aspirin_smiles)
         aspirin.SetProp('_Name', 'aspirin')
         aspirin_sdf = Chem.MolToMolBlock(aspirin)
         self.aspirin = Chem.MolFromMolBlock(aspirin_sdf)
@@ -35,14 +35,14 @@ class TestMolIO(unittest.TestCase):
         self.aspirin_salt = Chem.MolFromMolBlock(
             Chem.MolToMolBlock(aspirin_salt))
 
-        # ibuprofen
-        ibuprofen_smiles = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O ibuprofen'
-        ibuprofen = Chem.MolFromSmiles(ibuprofen_smiles.split()[0])
-        ibuprofen.SetProp('_Name', 'ibuprofen')
-        ibuprofen_sdf = Chem.MolToMolBlock(ibuprofen)
-        self.ibuprofen = Chem.MolFromMolBlock(ibuprofen_sdf)
+        # levalbuterol (chiral)
+        levalbuterol_smiles = 'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O'
+        levalbuterol = Chem.MolFromSmiles(levalbuterol_smiles)
+        levalbuterol.SetProp('_Name', 'levalbuterol')
+        levalbuterol_sdf = Chem.MolToMolBlock(levalbuterol, includeStereo=True)
+        self.levalbuterol = Chem.MolFromMolBlock(levalbuterol_sdf)
 
-        self.ref_mols = [self.aspirin, self.ibuprofen]
+        self.ref_mols = [self.aspirin, self.levalbuterol]
 
         # SDF
         _, self.sdf_filename = tempfile.mkstemp(suffix='.sdf',
@@ -61,6 +61,12 @@ class TestMolIO(unittest.TestCase):
                                                      dir=self.temp_dir)
         with open(self.sdf_salt_filename, 'wb') as f:
             f.write(Chem.MolToMolBlock(self.aspirin_salt))
+
+        # SDF with chiral molecule
+        _, self.sdf_chiral_filename = tempfile.mkstemp(suffix='.sdf',
+                                                       dir=self.temp_dir)
+        with open(self.sdf_chiral_filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.levalbuterol, includeStereo=True))
 
         # Gzipped SDF
         _, self.sdf_gz_filename = tempfile.mkstemp(suffix='.sdf.gz',
@@ -203,7 +209,8 @@ class TestMolReader(TestMolIO):
         Test MolReader.is_same_molecule.
         """
         assert self.reader.is_same_molecule(self.aspirin, self.aspirin)
-        assert not self.reader.is_same_molecule(self.aspirin, self.ibuprofen)
+        assert not self.reader.is_same_molecule(self.aspirin,
+                                                self.levalbuterol)
 
     def test_no_remove_hydrogens(self):
         """
@@ -236,7 +243,19 @@ class TestMolReader(TestMolIO):
         """
         Test stereochemistry preservation.
         """
-        assert False
+
+        # sanity check for reference molecule
+        chiral = False
+        chiral_tags = [Chem.ChiralType.CHI_TETRAHEDRAL_CW,
+                       Chem.ChiralType.CHI_TETRAHEDRAL_CCW]
+        for atom in self.levalbuterol.GetAtoms():
+            if atom.GetChiralTag() in chiral_tags:
+                chiral = True
+        assert chiral
+
+        mols = self.reader.read_mols_from_file(self.sdf_chiral_filename)
+        for a, b in zip(mols.next().GetAtoms(), self.levalbuterol.GetAtoms()):
+            assert a.GetChiralTag() == b.GetChiralTag()
 
 
 class TestMolWriter(TestMolIO):
