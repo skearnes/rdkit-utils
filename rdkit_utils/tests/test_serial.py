@@ -249,12 +249,13 @@ class TestMolReader(TestMolIO):
         """
         Test salt removal.
         """
-        assert False
+        raise unittest.SkipTest()
 
     def test_no_remove_salts(self):
         """
         Test salt retention.
         """
+        raise unittest.SkipTest()
 
 
 class TestMolWriter(TestMolIO):
@@ -277,6 +278,7 @@ class TestMolWriter(TestMolIO):
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
+        self.writer.close()
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
@@ -299,6 +301,7 @@ class TestMolWriter(TestMolIO):
         _, filename = tempfile.mkstemp(suffix='.sdf.gz', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
+        self.writer.close()
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
@@ -321,6 +324,7 @@ class TestMolWriter(TestMolIO):
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
+        self.writer.close()
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
@@ -343,6 +347,7 @@ class TestMolWriter(TestMolIO):
         _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
+        self.writer.close()
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
@@ -358,8 +363,26 @@ class TestMolWriter(TestMolIO):
                 print self.aspirin_smiles
                 raise e
 
-    def test_stereo(self):
+    def test_stereo_sdf(self):
         """
-        Test stereochemistry preservation.
+        Test stereochemistry preservation when writing to SDF.
         """
-        assert False
+        raise unittest.SkipTest()
+
+    def test_stereo_smi(self):
+        """
+        Test stereochemistry preservation when writing to SMILES.
+        """
+        raise unittest.SkipTest()
+
+    def test_no_stereo_sdf(self):
+        """
+        Test stereochemistry removal when writing to SDF.
+        """
+        raise unittest.SkipTest()
+
+    def test_no_stereo_smiles(self):
+        """
+        Test stereochemistry removal when writing to SMILES.
+        """
+        raise unittest.SkipTest()
