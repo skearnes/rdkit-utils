@@ -179,6 +179,8 @@ class MolReader(object):
             File-like object.
         """
         for line in f.readlines():
+            if not line.strip():
+                continue
             line = line.strip().split()
             if len(line) > 1:
                 smiles, name = line
@@ -238,10 +240,13 @@ class MolWriter(object):
         File-like object.
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf' and 'smi'.
+    stereo : bool, optional (default True)
+        Whether to preserve stereochemistry in output.
     """
-    def __init__(self, f=None, mol_format=None):
+    def __init__(self, f=None, mol_format=None, stereo=True):
         self.f = f
         self.mol_format = mol_format
+        self.stereo = stereo
 
     def __del__(self):
         self.close()
@@ -298,6 +303,9 @@ class MolWriter(object):
         """
         w = Chem.SDWriter(self.f)
         for mol in mols:
+            if not self.stereo:
+                mol = Chem.Mol(mol)  # create a copy
+                Chem.RemoveStereochemistry(mol)
             if mol.GetNumConformers():
                 for conf in mol.GetConformers():
                     w.write(mol, confId=conf.GetId())
@@ -314,7 +322,11 @@ class MolWriter(object):
         mols : iterable
             Molecules to write.
         """
-        w = Chem.SmilesWriter(self.f)
         for mol in mols:
-            w.write(mol)
-        w.close()
+            smiles = Chem.MolToSmiles(mol, isomericSmiles=self.stereo,
+                                      canonical=True)
+            self.f.write(smiles)
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+                self.f.write('\t' + name)
+            self.f.write('\n')
