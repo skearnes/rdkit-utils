@@ -182,7 +182,7 @@ class MolReader(object):
             if len(line) > 1:
                 smiles, name = line
             else:
-                smiles = line
+                smiles, = line
                 name = None
             if self.remove_hydrogens:
                 mol = Chem.MolFromSmiles(smiles)
