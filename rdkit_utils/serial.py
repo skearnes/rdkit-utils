@@ -7,6 +7,7 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "3-clause BSD"
 
 import gzip
+import os
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -23,10 +24,14 @@ def guess_mol_format(filename):
     filename : str
         Filename.
     """
-    if filename.endswith(('.sdf', '.sdf.gz')):
+
+    # strip gzip suffix
+    if filename.endswith('.gz'):
+        filename = os.path.splitext(filename)[0]
+
+    if filename.endswith('.sdf'):
         mol_format = 'sdf'
-    elif filename.endswith(('.smi', '.smi.gz', '.can', '.can.gz',
-                            '.ism', '.ism.gz')):
+    elif filename.endswith(('.smi', '.can', '.ism')):
         mol_format = 'smi'
     else:
         raise NotImplementedError('Unrecognized file format.')
@@ -266,10 +271,10 @@ class MolWriter(object):
             self.f = gzip.open(filename, 'wb')
         else:
             self.f = open(filename, 'wb')
-        if mol_format is None:
-            self.mol_format = guess_mol_format(filename)
-        else:
+        if mol_format is not None:
             self.mol_format = mol_format
+        else:
+            self.mol_format = guess_mol_format(filename)
 
     def close(self):
         """
@@ -291,6 +296,7 @@ class MolWriter(object):
             self._write_sdf(mols)
         elif self.mol_format == 'smi':
             self._write_smiles(mols)
+        self.f.flush()  # flush changes
 
     def _write_sdf(self, mols):
         """
