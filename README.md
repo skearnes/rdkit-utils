@@ -13,27 +13,29 @@ Read molecules from multiple file formats. The `MolReader` class automatically _
 ```python
 from rdkit_utils import serial
 
+reader = serial.MolReader()
+
 # get a molecule generator
-mols = serial.read_mols_from_file('molecules.sdf.gz')  # gzipped files are OK
-mols = serial.read_mols_from_file('molecules.smi')  # it can read SMILES, too
+mols = reader.read_mols_from_file('molecules.sdf.gz')  # gzipped files are OK
+mols = reader.read_mols_from_file('molecules.smi')  # it can read SMILES, too
 
 # read from a file-like object
 with open('molecules.sdf.gz') as f:
-    mols = serial.read_mols(f, mol_format='sdf')
-    ...
-
-# object-oriented interface
-reader = serial.MolReader(remove_salts=False)
-with open('molecules.smi') as f:
-    mols = reader.read_mols(f, mol_format='smi')
+    mols = reader.read_mols(f, mol_format='sdf')
     ...
 ```
 
-Generate conformers with energy minimization _prior_ to pruning:
+Generate conformers with minimization _prior_ to pruning:
 
 ```python
 from rdkit_utils import conformers, serial
 
-mols = serial.read_mols_from_file('molecules.sdf.gz')
-expanded = conformers.generate_conformers(mols, n_conformers=10)
+reader = serial.MolReader()
+mols = reader.read_mols_from_file('molecules.sdf.gz')
+
+engine = conformers.ConformerGenerator(max_conformers=10)
+expanded = []
+for mol in mols:
+    expanded.append(engine.generate_conformers(mol))
+...
 ```
