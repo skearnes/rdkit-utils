@@ -80,6 +80,12 @@ class TestMolIO(unittest.TestCase):
         with open(self.smi_filename, 'wb') as f:
             f.write(aspirin_smiles)
 
+        # SMILES with title
+        _, self.smi_title_filename = tempfile.mkstemp(suffix='.smi',
+                                                      dir=self.temp_dir)
+        with open(self.smi_title_filename, 'wb') as f:
+            f.write('{}\t{}'.format(aspirin_smiles, 'aspirin'))
+
         # Gzipped SMILES
         _, self.smi_gz_filename = tempfile.mkstemp(suffix='.smi.gz',
                                                    dir=self.temp_dir)
@@ -120,6 +126,17 @@ class TestMolReader(TestMolIO):
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         mols = self.reader.read_mols_from_file(self.smi_filename)
         assert mols.next().ToBinary() == ref_mol.ToBinary()
+
+    def test_read_smi_title(self):
+        """
+        Read a SMILES file with molecule titles.
+        """
+        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
+        ref_mol.SetProp('_Name', 'aspirin')
+        mols = self.reader.read_mols_from_file(self.smi_title_filename)
+        mol = mols.next()
+        assert mol.ToBinary() == ref_mol.ToBinary()
+        assert mol.GetProp('_Name') == ref_mol.GetProp('_Name')
 
     def test_read_smi_gz(self):
         """
@@ -239,24 +256,6 @@ class TestMolReader(TestMolIO):
         Test salt retention.
         """
 
-    def test_stereo(self):
-        """
-        Test stereochemistry preservation.
-        """
-
-        # sanity check for reference molecule
-        chiral = False
-        chiral_tags = [Chem.ChiralType.CHI_TETRAHEDRAL_CW,
-                       Chem.ChiralType.CHI_TETRAHEDRAL_CCW]
-        for atom in self.levalbuterol.GetAtoms():
-            if atom.GetChiralTag() in chiral_tags:
-                chiral = True
-        assert chiral
-
-        mols = self.reader.read_mols_from_file(self.sdf_chiral_filename)
-        for a, b in zip(mols.next().GetAtoms(), self.levalbuterol.GetAtoms()):
-            assert a.GetChiralTag() == b.GetChiralTag()
-
 
 class TestMolWriter(TestMolIO):
     """
@@ -268,6 +267,8 @@ class TestMolWriter(TestMolIO):
         """
         super(TestMolWriter, self).setUp()
         self.writer = serial.MolWriter()
+        self.aspirin_sdf = Chem.MolToMolBlock(self.aspirin)
+        self.aspirin_smiles = Chem.MolToSmiles(self.aspirin) + ' aspirin'
 
     def test_write_sdf(self):
         """
