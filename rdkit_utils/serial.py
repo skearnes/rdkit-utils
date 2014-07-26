@@ -9,6 +9,7 @@ __license__ = "3-clause BSD"
 import gzip
 
 from rdkit import Chem
+from rdkit.Chem import AllChem
 from rdkit.Chem.SaltRemover import SaltRemover
 
 
@@ -192,6 +193,11 @@ class MolReader(object):
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
                 Chem.SanitizeMol(mol)
 
+            # add 2D coordinates
+            # this is required for preservation of stereochemistry when
+            # writing to SDF files or blocks
+            AllChem.Compute2DCoords(mol)
+
             if name is not None:
                 mol.SetProp('_Name', name)
             yield mol
@@ -269,7 +275,7 @@ class MolWriter(object):
 
     def write(self, mols):
         """
-        Write molecules to a file.
+        Write molecules to a file-like object.
 
         Parameters
         ----------
@@ -277,16 +283,38 @@ class MolWriter(object):
             Molecules to write.
         """
         if self.mol_format == 'sdf':
-            w = Chem.SDWriter(self.f)
-            for mol in mols:
-                if mol.GetNumConformers():
-                    for conf in mol.GetConformers():
-                        w.write(mol, confId=conf.GetId())
-                else:
-                    w.write(mol)
-            w.close()
+            self._write_sdf(mols)
         elif self.mol_format == 'smi':
-            w = Chem.SmilesWriter(self.f)
-            for mol in mols:
+            self._write_smiles(mols)
+
+    def _write_sdf(self, mols):
+        """
+        Write molecules in SDF format.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules to write.
+        """
+        w = Chem.SDWriter(self.f)
+        for mol in mols:
+            if mol.GetNumConformers():
+                for conf in mol.GetConformers():
+                    w.write(mol, confId=conf.GetId())
+            else:
                 w.write(mol)
-            w.close()
+        w.close()
+
+    def _write_smiles(self, mols):
+        """
+        Write molecules in SMILES format.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules to write.
+        """
+        w = Chem.SmilesWriter(self.f)
+        for mol in mols:
+            w.write(mol)
+        w.close()
