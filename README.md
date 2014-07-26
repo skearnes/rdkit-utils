@@ -39,3 +39,5 @@ for mol in mols:
     expanded.append(engine.generate_conformers(mol))
 ...
 ```
+
+Additionally, the `ConformerGenerator` class starts with a pool of conformers and prunes out conformers within an RMSD threshold.
