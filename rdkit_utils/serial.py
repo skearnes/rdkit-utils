@@ -184,12 +184,11 @@ class MolReader(object):
             else:
                 smiles, = line
                 name = None
+
+            # hydrogens are removed by default, which triggers sanitization
             if self.remove_hydrogens:
                 mol = Chem.MolFromSmiles(smiles)
             else:
-
-                # sanitization is normally triggered by removing
-                # hydrogens
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
                 Chem.SanitizeMol(mol)
 
