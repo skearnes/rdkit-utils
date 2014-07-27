@@ -406,10 +406,15 @@ class TestMolWriter(TestMolIO):
 
     def test_stereo_setup(self):
         """
-        Make sure reference molecule is correct.
+        Make sure chiral reference molecule is correct.
         """
         smiles = Chem.MolToSmiles(self.levalbuterol, isomericSmiles=True)
-        assert '@' in smiles
+        assert '@' in smiles  # check for stereochemistry flag
+
+        # check that removing stereochemistry changes the molecule
+        original = self.levalbuterol.ToBinary()
+        AllChem.RemoveStereochemistry(self.levalbuterol)
+        assert self.levalbuterol.ToBinary() != original
 
     def test_stereo_sdf(self):
         """
@@ -450,7 +455,7 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
         mol = mols.next()
 
-        # make sure it is different
+        # make sure the written molecule differs from the reference
         assert mol.ToBinary() != self.levalbuterol.ToBinary()
 
         # check again after removing stereochemistry
@@ -472,7 +477,7 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
         mol = mols.next()
 
-        # make sure it is different
+        # make sure the written molecule differs from the reference
         assert mol.ToBinary() != self.levalbuterol.ToBinary()
 
         # check again after removing stereochemistry
