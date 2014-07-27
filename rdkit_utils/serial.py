@@ -310,7 +310,7 @@ class MolWriter(object):
         w = Chem.SDWriter(self.f)
         for mol in mols:
             if not self.stereo:
-                mol = Chem.Mol(mol)  # create a copy
+                mol = Chem.Mol(mol)  # create a copy before changing
                 Chem.RemoveStereochemistry(mol)
             if mol.GetNumConformers():
                 for conf in mol.GetConformers():

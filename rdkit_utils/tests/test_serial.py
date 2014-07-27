@@ -30,18 +30,24 @@ class TestMolIO(unittest.TestCase):
         aspirin.SetProp('_Name', 'aspirin')
         aspirin_sdf = Chem.MolToMolBlock(aspirin)
         self.aspirin = Chem.MolFromMolBlock(aspirin_sdf)
-        self.aspirin_h = Chem.AddHs(aspirin)  # add hydrogens
-        aspirin_salt = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)[O-].[Na+]')
-        aspirin_salt.SetProp('_Name', 'aspirin sodium')
-        self.aspirin_salt = Chem.MolFromMolBlock(
-            Chem.MolToMolBlock(aspirin_salt))
+        self.aspirin_h = Chem.AddHs(self.aspirin)
+        aspirin_sodium = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)[O-].[Na+]')
+        aspirin_sodium.SetProp('_Name', 'aspirin sodium')
+        self.aspirin_sodium = Chem.MolFromMolBlock(
+            Chem.MolToMolBlock(aspirin_sodium))
 
         # levalbuterol (chiral)
         levalbuterol_smiles = 'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O'
         levalbuterol = Chem.MolFromSmiles(levalbuterol_smiles)
         levalbuterol.SetProp('_Name', 'levalbuterol')
+        AllChem.Compute2DCoords(levalbuterol)
         levalbuterol_sdf = Chem.MolToMolBlock(levalbuterol, includeStereo=True)
         self.levalbuterol = Chem.MolFromMolBlock(levalbuterol_sdf)
+        levalbuterol_hcl = Chem.MolFromSmiles(
+            'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O.Cl')
+        levalbuterol_hcl.SetProp('_Name', 'levalbuterol hydrochloride')
+        self.levalbuterol_hcl = Chem.MolFromMolBlock(
+            Chem.MolToMolBlock(levalbuterol_hcl))
 
         self.ref_mols = [self.aspirin, self.levalbuterol]
 
@@ -58,10 +64,14 @@ class TestMolIO(unittest.TestCase):
             f.write(Chem.MolToMolBlock(self.aspirin_h))
 
         # SDF with salt
+        # test two different salts, with and without formal charges in the
+        # original SMILES
         _, self.sdf_salt_filename = tempfile.mkstemp(suffix='.sdf',
                                                      dir=self.temp_dir)
         with open(self.sdf_salt_filename, 'wb') as f:
-            f.write(Chem.MolToMolBlock(self.aspirin_salt))
+            for mol in [self.aspirin_sodium, self.levalbuterol_hcl]:
+                f.write(Chem.MolToMolBlock(mol))
+                f.write('$$$$\n')  # molecule delimiter
 
         # SDF with chiral molecule
         _, self.sdf_chiral_filename = tempfile.mkstemp(suffix='.sdf',
@@ -207,6 +217,8 @@ class TestMolReader(TestMolIO):
         """
         Read a multiconformer SDF file containing multiple molecules.
         """
+
+        # generate conformers
         ref_mols = []
         engine = conformers.ConformerGenerator(max_conformers=3,
                                                pool_multiplier=1)
@@ -214,12 +226,16 @@ class TestMolReader(TestMolIO):
             expanded = engine.generate_conformers(mol)
             assert expanded.GetNumConformers() > 1
             ref_mols.append(expanded)
+
+        # write to disk
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             for mol in ref_mols:
                 for conf in mol.GetConformers():
                     f.write(Chem.MolToMolBlock(mol, confId=conf.GetId()))
                     f.write('$$$$\n')  # add molecule delimiter
+
+        # compare
         mols = self.reader.read_mols_from_file(filename)
         mols = list(mols)
         assert len(mols) == 2
@@ -254,13 +270,29 @@ class TestMolReader(TestMolIO):
         """
         Test salt removal.
         """
-        raise unittest.SkipTest()
+        ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
+        reader = serial.MolReader(remove_salts=True)
+        mols = reader.read_mols_from_file(self.sdf_salt_filename)
+        mols = list(mols)
+        assert len(mols) == 2
+        for mol, ref_mol in zip(mols, ref_mols):
+            assert mol.GetNumAtoms() < ref_mol.GetNumAtoms()
+            desalted = self.reader.clean_mol(ref_mol)
+            assert mol.ToBinary() == desalted.ToBinary()
 
     def test_no_remove_salts(self):
         """
         Test salt retention.
         """
-        raise unittest.SkipTest()
+        ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
+        reader = serial.MolReader(remove_salts=False)
+        mols = reader.read_mols_from_file(self.sdf_salt_filename)
+        mols = list(mols)
+        assert len(mols) == 2
+        for mol, ref_mol in zip(mols, ref_mols):
+            assert mol.ToBinary() == ref_mol.ToBinary()
+            desalted = self.reader.clean_mol(ref_mol)
+            assert mol.GetNumAtoms() > desalted.GetNumAtoms()
 
 
 class TestMolWriter(TestMolIO):
@@ -372,26 +404,77 @@ class TestMolWriter(TestMolIO):
                 print self.aspirin_smiles
                 raise e
 
+    def test_stereo_setup(self):
+        """
+        Make sure reference molecule is correct.
+        """
+        smiles = Chem.MolToSmiles(self.levalbuterol, isomericSmiles=True)
+        assert '@' in smiles
+
     def test_stereo_sdf(self):
         """
         Test stereochemistry preservation when writing to SDF.
         """
-        raise unittest.SkipTest()
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        writer = serial.MolWriter(stereo=True)
+        writer.open(filename)
+        writer.write([self.levalbuterol])
+        writer.close()
+        mols = self.reader.read_mols_from_file(filename)
+        assert mols.next().ToBinary() == self.levalbuterol.ToBinary()
 
     def test_stereo_smi(self):
         """
         Test stereochemistry preservation when writing to SMILES.
         """
-        raise unittest.SkipTest()
+        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.levalbuterol,
+                                                      isomericSmiles=True))
+        AllChem.Compute2DCoords(ref_mol)
+        _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
+        writer = serial.MolWriter(stereo=True)
+        writer.open(filename)
+        writer.write([self.levalbuterol])
+        writer.close()
+        mols = self.reader.read_mols_from_file(filename)
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
 
     def test_no_stereo_sdf(self):
         """
         Test stereochemistry removal when writing to SDF.
         """
-        raise unittest.SkipTest()
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        writer = serial.MolWriter(stereo=False)
+        writer.open(filename)
+        writer.write([self.levalbuterol])
+        writer.close()
+        mols = self.reader.read_mols_from_file(filename)
+        mol = mols.next()
+
+        # make sure it is different
+        assert mol.ToBinary() != self.levalbuterol.ToBinary()
+
+        # check again after removing stereochemistry
+        AllChem.RemoveStereochemistry(self.levalbuterol)
+        assert mol.ToBinary() == self.levalbuterol.ToBinary()
 
     def test_no_stereo_smiles(self):
         """
         Test stereochemistry removal when writing to SMILES.
         """
-        raise unittest.SkipTest()
+        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.levalbuterol,
+                                                      isomericSmiles=True))
+        AllChem.Compute2DCoords(ref_mol)
+        _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
+        writer = serial.MolWriter(stereo=False)
+        writer.open(filename)
+        writer.write([self.levalbuterol])
+        writer.close()
+        mols = self.reader.read_mols_from_file(filename)
+        mol = mols.next()
+
+        # make sure it is different
+        assert mol.ToBinary() != self.levalbuterol.ToBinary()
+
+        # check again after removing stereochemistry
+        AllChem.RemoveStereochemistry(self.levalbuterol)
+        assert mol.ToBinary() == self.levalbuterol.ToBinary()
