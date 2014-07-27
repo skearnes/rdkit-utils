@@ -7,8 +7,10 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "3-clause BSD"
 
 import gzip
+import os
 
 from rdkit import Chem
+from rdkit.Chem import AllChem
 from rdkit.Chem.SaltRemover import SaltRemover
 
 
@@ -22,10 +24,14 @@ def guess_mol_format(filename):
     filename : str
         Filename.
     """
-    if filename.endswith(('.sdf', '.sdf.gz')):
+
+    # strip gzip suffix
+    if filename.endswith('.gz'):
+        filename = os.path.splitext(filename)[0]
+
+    if filename.endswith('.sdf'):
         mol_format = 'sdf'
-    elif filename.endswith(('.smi', '.smi.gz', '.can', '.can.gz',
-                            '.ism', '.ism.gz')):
+    elif filename.endswith(('.smi', '.can', '.ism')):
         mol_format = 'smi'
     else:
         raise NotImplementedError('Unrecognized file format.')
@@ -178,6 +184,8 @@ class MolReader(object):
             File-like object.
         """
         for line in f.readlines():
+            if not line.strip():
+                continue
             line = line.strip().split()
             if len(line) > 1:
                 smiles, name = line
@@ -191,6 +199,11 @@ class MolReader(object):
             else:
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
                 Chem.SanitizeMol(mol)
+
+            # add 2D coordinates
+            # this is required for preservation of stereochemistry when
+            # writing to SDF files or blocks
+            AllChem.Compute2DCoords(mol)
 
             if name is not None:
                 mol.SetProp('_Name', name)
@@ -232,10 +245,13 @@ class MolWriter(object):
         File-like object.
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf' and 'smi'.
+    stereo : bool, optional (default True)
+        Whether to preserve stereochemistry in output.
     """
-    def __init__(self, f=None, mol_format=None):
+    def __init__(self, f=None, mol_format=None, stereo=True):
         self.f = f
         self.mol_format = mol_format
+        self.stereo = stereo
 
     def __del__(self):
         self.close()
@@ -255,10 +271,10 @@ class MolWriter(object):
             self.f = gzip.open(filename, 'wb')
         else:
             self.f = open(filename, 'wb')
-        if mol_format is None:
-            self.mol_format = guess_mol_format(filename)
-        else:
+        if mol_format is not None:
             self.mol_format = mol_format
+        else:
+            self.mol_format = guess_mol_format(filename)
 
     def close(self):
         """
@@ -269,7 +285,7 @@ class MolWriter(object):
 
     def write(self, mols):
         """
-        Write molecules to a file.
+        Write molecules to a file-like object.
 
         Parameters
         ----------
@@ -277,16 +293,46 @@ class MolWriter(object):
             Molecules to write.
         """
         if self.mol_format == 'sdf':
-            w = Chem.SDWriter(self.f)
-            for mol in mols:
-                if mol.GetNumConformers():
-                    for conf in mol.GetConformers():
-                        w.write(mol, confId=conf.GetId())
-                else:
-                    w.write(mol)
-            w.close()
+            self._write_sdf(mols)
         elif self.mol_format == 'smi':
-            w = Chem.SmilesWriter(self.f)
-            for mol in mols:
+            self._write_smiles(mols)
+        self.f.flush()  # flush changes
+
+    def _write_sdf(self, mols):
+        """
+        Write molecules in SDF format.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules to write.
+        """
+        w = Chem.SDWriter(self.f)
+        for mol in mols:
+            if not self.stereo:
+                mol = Chem.Mol(mol)  # create a copy
+                Chem.RemoveStereochemistry(mol)
+            if mol.GetNumConformers():
+                for conf in mol.GetConformers():
+                    w.write(mol, confId=conf.GetId())
+            else:
                 w.write(mol)
-            w.close()
+        w.close()
+
+    def _write_smiles(self, mols):
+        """
+        Write molecules in SMILES format.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules to write.
+        """
+        for mol in mols:
+            smiles = Chem.MolToSmiles(mol, isomericSmiles=self.stereo,
+                                      canonical=True)
+            self.f.write(smiles)
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+                self.f.write('\t' + name)
+            self.f.write('\n')
