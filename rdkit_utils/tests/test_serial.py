@@ -31,6 +31,7 @@ class TestMolIO(unittest.TestCase):
         aspirin_sdf = Chem.MolToMolBlock(aspirin)
         self.aspirin = Chem.MolFromMolBlock(aspirin_sdf)
         self.aspirin_h = Chem.AddHs(self.aspirin)
+        Chem.SanitizeMol(self.aspirin_h)
         aspirin_sodium = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)[O-].[Na+]')
         aspirin_sodium.SetProp('_Name', 'aspirin sodium')
         self.aspirin_sodium = Chem.MolFromMolBlock(
@@ -85,7 +86,7 @@ class TestMolIO(unittest.TestCase):
         with gzip.open(self.sdf_gz_filename, 'wb') as f:
             f.write(aspirin_sdf)
 
-        # SMILES
+        # SMILES without title
         _, self.smi_filename = tempfile.mkstemp(suffix='.smi',
                                                 dir=self.temp_dir)
         with open(self.smi_filename, 'wb') as f:
@@ -159,6 +160,18 @@ class TestMolReader(TestMolIO):
         AllChem.Compute2DCoords(ref_mol)
         mols = self.reader.read_mols_from_file(self.smi_gz_filename)
         assert mols.next().ToBinary() == ref_mol.ToBinary()
+
+    def test_read_pickle(self):
+        """
+        Read from a pickle.
+        """
+        raise unittest.SkipTest()
+
+    def test_read_pickle_gz(self):
+        """
+        Read from a compressed pickle.
+        """
+        raise unittest.SkipTest()
 
     def test_read_file_like(self):
         """
@@ -242,13 +255,13 @@ class TestMolReader(TestMolIO):
         for i in xrange(len(mols)):
             assert mols[i].ToBinary() == ref_mols[i].ToBinary()
 
-    def test_is_same_molecule(self):
+    def test_are_same_molecule(self):
         """
-        Test MolReader.is_same_molecule.
+        Test MolReader.are_same_molecule.
         """
-        assert self.reader.is_same_molecule(self.aspirin, self.aspirin)
-        assert not self.reader.is_same_molecule(self.aspirin,
-                                                self.levalbuterol)
+        assert self.reader.are_same_molecule(self.aspirin, self.aspirin)
+        assert not self.reader.are_same_molecule(self.aspirin,
+                                                 self.levalbuterol)
 
     def test_no_remove_hydrogens(self):
         """
@@ -403,6 +416,18 @@ class TestMolWriter(TestMolIO):
                 print data
                 print self.aspirin_smiles
                 raise e
+
+    def test_write_pickle(self):
+        """
+        Write a pickle.
+        """
+        raise unittest.SkipTest()
+
+    def test_write_pickle_gz(self):
+        """
+        Write a compressed pickle.
+        """
+        raise unittest.SkipTest()
 
     def test_stereo_setup(self):
         """

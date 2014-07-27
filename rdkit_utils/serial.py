@@ -6,6 +6,7 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "3-clause BSD"
 
+import cPickle
 import gzip
 import os
 
@@ -33,6 +34,8 @@ def guess_mol_format(filename):
         mol_format = 'sdf'
     elif filename.endswith(('.smi', '.can', '.ism')):
         mol_format = 'smi'
+    elif filename.endswith('.pkl'):
+        mol_format = 'pkl'
     else:
         raise NotImplementedError('Unrecognized file format.')
     return mol_format
@@ -40,8 +43,8 @@ def guess_mol_format(filename):
 
 class MolReader(object):
     """
-    Read molecules from files and file-like objects. Supports SDF or SMILES
-    format.
+    Read molecules from files and file-like objects. Supports SDF, SMILES,
+    and RDKit binary format (via pickle).
 
     Parameters
     ----------
@@ -77,8 +80,8 @@ class MolReader(object):
         filename : str
             Filename.
         mol_format : str, optional
-            Molecule file format. Currently supports 'sdf' and 'smi'. If
-            not provided, this method will attempt to infer it from the
+            Molecule file format. Currently supports 'sdf', 'smi', and
+            'pkl'. If not provided, the format is inferred from the
             filename.
 
         Returns
@@ -157,6 +160,8 @@ class MolReader(object):
             return self._read_sdf(f)
         elif mol_format == 'smi':
             return self._read_smiles(f)
+        elif mol_format == 'pkl':
+            return self._read_pickle(f)
         else:
             raise NotImplementedError('Unrecognized molecule format ' +
                                       '"{}"'.format(mol_format))
@@ -209,6 +214,18 @@ class MolReader(object):
                 mol.SetProp('_Name', name)
             yield mol
 
+    def _read_pickle(self, f):
+        """
+        Read pickled molecules from a file-like object.
+
+        Parameters
+        ----------
+        f : file
+            File-like object.
+        """
+        for mol in cPickle.load(f):
+            yield mol
+
     def are_same_molecule(self, a, b):
         """
         Test whether two molecules are conformers of the same molecule.
@@ -236,15 +253,15 @@ class MolReader(object):
 
 class MolWriter(object):
     """
-    Write molecules to files or file-like objects. Supports SDF or SMILES
-    format.
+    Write molecules to files or file-like objects. Supports SDF, SMILES,
+    and RDKit binary format (via pickle).
 
     Parameters
     ----------
     f : file, optional
         File-like object.
     mol_format : str, optional
-        Molecule file format. Currently supports 'sdf' and 'smi'.
+        Molecule file format. Currently supports 'sdf', 'smi', and 'pkl'.
     stereo : bool, optional (default True)
         Whether to preserve stereochemistry in output.
     """
@@ -265,7 +282,9 @@ class MolWriter(object):
         filename : str
             Filename.
         mol_format : str, optional
-            Molecule file format. Currently supports 'sdf' and 'smi'.
+            Molecule file format. Currently supports 'sdf', 'smi', and
+            'pkl'. If not provided, the format is inferred from the
+            filename.
         """
         if filename.endswith('.gz'):
             self.f = gzip.open(filename, 'wb')
@@ -296,6 +315,8 @@ class MolWriter(object):
             self._write_sdf(mols)
         elif self.mol_format == 'smi':
             self._write_smiles(mols)
+        elif self.mol_format == 'pkl':
+            self._write_pickle(mols)
         self.f.flush()  # flush changes
 
     def _write_sdf(self, mols):
@@ -336,3 +357,14 @@ class MolWriter(object):
                 name = mol.GetProp('_Name')
                 self.f.write('\t' + name)
             self.f.write('\n')
+
+    def _write_pickle(self, mols):
+        """
+        Write molecules to a pickle.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules to write.
+        """
+        cPickle.dump(mols, self.f, cPickle.HIGHEST_PROTOCOL)
