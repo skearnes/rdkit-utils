@@ -122,7 +122,7 @@ class MolReader(object):
             if parent is None:
                 parent = mol
                 continue
-            if self.is_same_molecule(parent, mol):
+            if self.are_same_molecule(parent, mol):
                 if mol.GetNumConformers():
                     for conf in mol.GetConformers():
                         parent.AddConformer(conf, assignId=True)
@@ -209,7 +209,7 @@ class MolReader(object):
                 mol.SetProp('_Name', name)
             yield mol
 
-    def is_same_molecule(self, a, b):
+    def are_same_molecule(self, a, b):
         """
         Test whether two molecules are conformers of the same molecule.
 
