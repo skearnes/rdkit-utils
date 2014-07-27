@@ -200,7 +200,7 @@ class MolReader(object):
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
                 Chem.SanitizeMol(mol)
 
-            # add 2D coordinates
+            # compute 2D coordinates
             # this is required for preservation of stereochemistry when
             # writing to SDF files or blocks
             AllChem.Compute2DCoords(mol)

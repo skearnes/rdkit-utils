@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from rdkit import Chem
+from rdkit.Chem import AllChem
 
 from rdkit_utils import conformers, serial
 
@@ -124,6 +125,7 @@ class TestMolReader(TestMolIO):
         Read a SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
+        AllChem.Compute2DCoords(ref_mol)
         mols = self.reader.read_mols_from_file(self.smi_filename)
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
@@ -133,6 +135,7 @@ class TestMolReader(TestMolIO):
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         ref_mol.SetProp('_Name', 'aspirin')
+        AllChem.Compute2DCoords(ref_mol)
         mols = self.reader.read_mols_from_file(self.smi_title_filename)
         mol = mols.next()
         assert mol.ToBinary() == ref_mol.ToBinary()
@@ -143,6 +146,7 @@ class TestMolReader(TestMolIO):
         Read a compressed SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
+        AllChem.Compute2DCoords(ref_mol)
         mols = self.reader.read_mols_from_file(self.smi_gz_filename)
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
@@ -185,6 +189,7 @@ class TestMolReader(TestMolIO):
         ref_mols = []
         for mol in self.ref_mols:
             mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+            AllChem.Compute2DCoords(mol)
             ref_mols.append(mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
@@ -269,7 +274,7 @@ class TestMolWriter(TestMolIO):
         super(TestMolWriter, self).setUp()
         self.writer = serial.MolWriter()
         self.aspirin_sdf = Chem.MolToMolBlock(self.aspirin)
-        self.aspirin_smiles = Chem.MolToSmiles(self.aspirin) + ' aspirin'
+        self.aspirin_smiles = Chem.MolToSmiles(self.aspirin) + '\taspirin'
 
     def test_write_sdf(self):
         """
@@ -321,6 +326,8 @@ class TestMolWriter(TestMolIO):
         """
         Write a SMILES file.
         """
+        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
+        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
@@ -328,13 +335,13 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
-        assert mols.next().ToBinary() == self.aspirin.ToBinary()
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
 
         # compare files
         with open(filename) as f:
             data = f.read()
             try:
-                assert data == self.aspirin_smiles
+                assert data.strip() == self.aspirin_smiles
             except AssertionError as e:
                 print data
                 print self.aspirin_smiles
@@ -344,6 +351,8 @@ class TestMolWriter(TestMolIO):
         """
         Write a compressed SMILES file.
         """
+        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
+        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
@@ -351,13 +360,13 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.read_mols_from_file(filename)
 
         # compare molecules
-        assert mols.next().ToBinary() == self.aspirin.ToBinary()
+        assert mols.next().ToBinary() == ref_mol.ToBinary()
 
         # compare files
         with gzip.open(filename) as f:
             data = f.read()
             try:
-                assert data == self.aspirin_smiles
+                assert data.strip() == self.aspirin_smiles
             except AssertionError as e:
                 print data
                 print self.aspirin_smiles
