@@ -102,40 +102,39 @@ class TestMolReader(TestMolIO):
         """
         Read a SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
+        self.aspirin.RemoveAllConformers()  # SMILES are read without confs
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             f.write(Chem.MolToSmiles(self.aspirin))
         self.reader.open(filename)
         mols = self.reader.get_mols()
-        assert mols.next().ToBinary() == ref_mol.ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_smi_title(self):
         """
         Read a SMILES file with molecule titles.
         """
-        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
-        ref_mol.SetProp('_Name', 'aspirin')
+        self.aspirin.RemoveAllConformers()  # SMILES are read without confs
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             f.write('{}\t{}'.format(Chem.MolToSmiles(self.aspirin), 'aspirin'))
         self.reader.open(filename)
         mols = self.reader.get_mols()
         mol = mols.next()
-        assert mol.ToBinary() == ref_mol.ToBinary()
-        assert mol.GetProp('_Name') == ref_mol.GetProp('_Name')
+        assert mol.ToBinary() == self.aspirin.ToBinary()
+        assert mol.GetProp('_Name') == self.aspirin.GetProp('_Name')
 
     def test_read_smi_gz(self):
         """
         Read a compressed SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
+        self.aspirin.RemoveAllConformers()  # SMILES are read without confs
         _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
         with gzip.open(filename, 'wb') as f:
             f.write(Chem.MolToSmiles(self.aspirin))
         self.reader.open(filename)
         mols = self.reader.get_mols()
-        assert mols.next().ToBinary() == ref_mol.ToBinary()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_pickle(self):
         """
@@ -379,7 +378,6 @@ class TestMolWriter(TestMolIO):
         """
         Write a SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
@@ -388,7 +386,8 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.get_mols()
 
         # compare molecules
-        assert mols.next().ToBinary() == ref_mol.ToBinary()
+        self.aspirin.RemoveAllConformers()  # SMILES are read without confs
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
         # compare files
         with open(filename) as f:
@@ -399,7 +398,6 @@ class TestMolWriter(TestMolIO):
         """
         Write a compressed SMILES file.
         """
-        ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
@@ -408,7 +406,8 @@ class TestMolWriter(TestMolIO):
         mols = self.reader.get_mols()
 
         # compare molecules
-        assert mols.next().ToBinary() == ref_mol.ToBinary()
+        self.aspirin.RemoveAllConformers()  # SMILES are read without confs
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
         # compare files
         with gzip.open(filename) as f:
