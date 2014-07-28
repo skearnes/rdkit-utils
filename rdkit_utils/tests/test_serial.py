@@ -52,71 +52,6 @@ class TestMolIO(unittest.TestCase):
             Chem.MolToMolBlock(levalbuterol_hcl))
 
         self.ref_mols = [self.aspirin, self.levalbuterol]
-
-        # SDF
-        _, self.sdf_filename = tempfile.mkstemp(suffix='.sdf',
-                                                dir=self.temp_dir)
-        with open(self.sdf_filename, 'wb') as f:
-            f.write(aspirin_sdf)
-
-        # SDF with hydrogens
-        _, self.sdf_h_filename = tempfile.mkstemp(suffix='.sdf',
-                                                  dir=self.temp_dir)
-        with open(self.sdf_h_filename, 'wb') as f:
-            f.write(Chem.MolToMolBlock(self.aspirin_h))
-
-        # SDF with salt
-        # test two different salts, with and without formal charges in the
-        # original SMILES
-        _, self.sdf_salt_filename = tempfile.mkstemp(suffix='.sdf',
-                                                     dir=self.temp_dir)
-        with open(self.sdf_salt_filename, 'wb') as f:
-            for mol in [self.aspirin_sodium, self.levalbuterol_hcl]:
-                f.write(Chem.MolToMolBlock(mol))
-                f.write('$$$$\n')  # molecule delimiter
-
-        # SDF with chiral molecule
-        _, self.sdf_chiral_filename = tempfile.mkstemp(suffix='.sdf',
-                                                       dir=self.temp_dir)
-        with open(self.sdf_chiral_filename, 'wb') as f:
-            f.write(Chem.MolToMolBlock(self.levalbuterol, includeStereo=True))
-
-        # gzipped SDF
-        _, self.sdf_gz_filename = tempfile.mkstemp(suffix='.sdf.gz',
-                                                   dir=self.temp_dir)
-        with gzip.open(self.sdf_gz_filename, 'wb') as f:
-            f.write(aspirin_sdf)
-
-        # SMILES without title
-        _, self.smi_filename = tempfile.mkstemp(suffix='.smi',
-                                                dir=self.temp_dir)
-        with open(self.smi_filename, 'wb') as f:
-            f.write(aspirin_smiles)
-
-        # SMILES with title
-        _, self.smi_title_filename = tempfile.mkstemp(suffix='.smi',
-                                                      dir=self.temp_dir)
-        with open(self.smi_title_filename, 'wb') as f:
-            f.write('{}\t{}'.format(aspirin_smiles, 'aspirin'))
-
-        # gzipped SMILES
-        _, self.smi_gz_filename = tempfile.mkstemp(suffix='.smi.gz',
-                                                   dir=self.temp_dir)
-        with gzip.open(self.smi_gz_filename, 'wb') as f:
-            f.write(aspirin_smiles)
-
-        # pickle
-        _, self.pickle_filename = tempfile.mkstemp(suffix='.pkl',
-                                                   dir=self.temp_dir)
-        with open(self.pickle_filename, 'wb') as f:
-            cPickle.dump([self.aspirin], f, cPickle.HIGHEST_PROTOCOL)
-
-        # gzipped pickle
-        _, self.pickle_gz_filename = tempfile.mkstemp(suffix='.pkl.gz',
-                                                      dir=self.temp_dir)
-        with gzip.open(self.pickle_gz_filename, 'wb') as f:
-            cPickle.dump([self.aspirin], f, cPickle.HIGHEST_PROTOCOL)
-
         self.reader = serial.MolReader()
 
     def tearDown(self):
@@ -134,7 +69,10 @@ class TestMolReader(TestMolIO):
         """
         Read an SDF file.
         """
-        self.reader.open(self.sdf_filename)
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin))
+        self.reader.open(filename)
         mols = self.reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
@@ -142,7 +80,10 @@ class TestMolReader(TestMolIO):
         """
         Read a compressed SDF file.
         """
-        self.reader.open(self.sdf_gz_filename)
+        _, filename = tempfile.mkstemp(suffix='.sdf.gz', dir=self.temp_dir)
+        with gzip.open(filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin))
+        self.reader.open(filename)
         mols = self.reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
@@ -152,7 +93,10 @@ class TestMolReader(TestMolIO):
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         AllChem.Compute2DCoords(ref_mol)
-        self.reader.open(self.smi_filename)
+        _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            f.write(Chem.MolToSmiles(self.aspirin))
+        self.reader.open(filename)
         mols = self.reader.get_mols()
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
@@ -163,7 +107,10 @@ class TestMolReader(TestMolIO):
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         ref_mol.SetProp('_Name', 'aspirin')
         AllChem.Compute2DCoords(ref_mol)
-        self.reader.open(self.smi_title_filename)
+        _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            f.write('{}\t{}'.format(Chem.MolToSmiles(self.aspirin), 'aspirin'))
+        self.reader.open(filename)
         mols = self.reader.get_mols()
         mol = mols.next()
         assert mol.ToBinary() == ref_mol.ToBinary()
@@ -175,7 +122,10 @@ class TestMolReader(TestMolIO):
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         AllChem.Compute2DCoords(ref_mol)
-        self.reader.open(self.smi_gz_filename)
+        _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
+        with gzip.open(filename, 'wb') as f:
+            f.write(Chem.MolToSmiles(self.aspirin))
+        self.reader.open(filename)
         mols = self.reader.get_mols()
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
@@ -183,7 +133,10 @@ class TestMolReader(TestMolIO):
         """
         Read from a pickle.
         """
-        self.reader.open(self.pickle_filename)
+        _, filename = tempfile.mkstemp(suffix='.pkl', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            cPickle.dump([self.aspirin], f, cPickle.HIGHEST_PROTOCOL)
+        self.reader.open(filename)
         mols = self.reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
@@ -191,7 +144,10 @@ class TestMolReader(TestMolIO):
         """
         Read from a compressed pickle.
         """
-        self.reader.open(self.pickle_gz_filename)
+        _, filename = tempfile.mkstemp(suffix='.pkl.gz', dir=self.temp_dir)
+        with gzip.open(filename, 'wb') as f:
+            cPickle.dump([self.aspirin], f, cPickle.HIGHEST_PROTOCOL)
+        self.reader.open(filename)
         mols = self.reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
@@ -199,7 +155,10 @@ class TestMolReader(TestMolIO):
         """
         Read from a file-like object.
         """
-        with open(self.sdf_filename) as f:
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin))
+        with open(filename) as f:
             reader = serial.MolReader(f, mol_format='sdf')
             mols = reader.get_mols()
             assert mols.next().ToBinary() == self.aspirin.ToBinary()
@@ -208,7 +167,10 @@ class TestMolReader(TestMolIO):
         """
         Read from a file-like object using gzip.
         """
-        with gzip.open(self.sdf_gz_filename) as f:
+        _, filename = tempfile.mkstemp(suffix='.sdf.gz', dir=self.temp_dir)
+        with gzip.open(filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin))
+        with gzip.open(filename) as f:
             reader = serial.MolReader(f, mol_format='sdf')
             mols = reader.get_mols()
             assert mols.next().ToBinary() == self.aspirin.ToBinary()
@@ -294,8 +256,11 @@ class TestMolReader(TestMolIO):
         """
         Test hydrogen retention.
         """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin_h))
         reader = serial.MolReader(remove_hydrogens=False)
-        reader.open(self.sdf_h_filename)
+        reader.open(filename)
         mols = reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin_h.ToBinary()
 
@@ -303,8 +268,11 @@ class TestMolReader(TestMolIO):
         """
         Test hydrogen removal.
         """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            f.write(Chem.MolToMolBlock(self.aspirin_h))
         reader = serial.MolReader(remove_hydrogens=True)
-        reader.open(self.sdf_h_filename)
+        reader.open(filename)
         mols = reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
@@ -312,9 +280,14 @@ class TestMolReader(TestMolIO):
         """
         Test salt removal.
         """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for mol in [self.aspirin_sodium, self.levalbuterol_hcl]:
+                f.write(Chem.MolToMolBlock(mol))
+                f.write('$$$$\n')  # molecule delimiter
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
         reader = serial.MolReader(remove_salts=True)
-        reader.open(self.sdf_salt_filename)
+        reader.open(filename)
         mols = reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
@@ -327,9 +300,14 @@ class TestMolReader(TestMolIO):
         """
         Test salt retention.
         """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for mol in [self.aspirin_sodium, self.levalbuterol_hcl]:
+                f.write(Chem.MolToMolBlock(mol))
+                f.write('$$$$\n')  # molecule delimiter
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
         reader = serial.MolReader(remove_salts=False)
-        reader.open(self.sdf_salt_filename)
+        reader.open(filename)
         mols = reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
