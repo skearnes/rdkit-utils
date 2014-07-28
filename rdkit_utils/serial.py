@@ -8,6 +8,7 @@ __license__ = "3-clause BSD"
 
 import cPickle
 import gzip
+import numpy as np
 import os
 
 from rdkit import Chem
@@ -217,7 +218,8 @@ class MolReader(MolIO):
         """
         Read pickled molecules from a file-like object.
         """
-        for mol in cPickle.load(self.f):
+        mols = cPickle.load(self.f)
+        for mol in np.atleast_1d(mols):
             yield mol
 
     def are_same_molecule(self, a, b):

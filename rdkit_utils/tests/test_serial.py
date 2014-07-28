@@ -1,6 +1,7 @@
 """
 Tests for serial.py.
 """
+import cPickle
 import gzip
 import shutil
 import tempfile
@@ -80,7 +81,7 @@ class TestMolIO(unittest.TestCase):
         with open(self.sdf_chiral_filename, 'wb') as f:
             f.write(Chem.MolToMolBlock(self.levalbuterol, includeStereo=True))
 
-        # Gzipped SDF
+        # gzipped SDF
         _, self.sdf_gz_filename = tempfile.mkstemp(suffix='.sdf.gz',
                                                    dir=self.temp_dir)
         with gzip.open(self.sdf_gz_filename, 'wb') as f:
@@ -98,11 +99,23 @@ class TestMolIO(unittest.TestCase):
         with open(self.smi_title_filename, 'wb') as f:
             f.write('{}\t{}'.format(aspirin_smiles, 'aspirin'))
 
-        # Gzipped SMILES
+        # gzipped SMILES
         _, self.smi_gz_filename = tempfile.mkstemp(suffix='.smi.gz',
                                                    dir=self.temp_dir)
         with gzip.open(self.smi_gz_filename, 'wb') as f:
             f.write(aspirin_smiles)
+
+        # pickle
+        _, self.pickle_filename = tempfile.mkstemp(suffix='.pkl',
+                                                   dir=self.temp_dir)
+        with open(self.pickle_filename, 'wb') as f:
+            cPickle.dump([self.aspirin], f, cPickle.HIGHEST_PROTOCOL)
+
+        # gzipped pickle
+        _, self.pickle_gz_filename = tempfile.mkstemp(suffix='.pkl.gz',
+                                                      dir=self.temp_dir)
+        with gzip.open(self.pickle_gz_filename, 'wb') as f:
+            cPickle.dump([self.aspirin], f, cPickle.HIGHEST_PROTOCOL)
 
         self.reader = serial.MolReader()
 
@@ -170,13 +183,17 @@ class TestMolReader(TestMolIO):
         """
         Read from a pickle.
         """
-        raise unittest.SkipTest()
+        self.reader.open(self.pickle_filename)
+        mols = self.reader.get_mols()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_pickle_gz(self):
         """
         Read from a compressed pickle.
         """
-        raise unittest.SkipTest()
+        self.reader.open(self.pickle_gz_filename)
+        mols = self.reader.get_mols()
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_file_like(self):
         """
@@ -352,12 +369,7 @@ class TestMolWriter(TestMolIO):
         # compare files
         with open(filename) as f:
             data = f.read()
-            try:
-                assert data == self.aspirin_sdf + '$$$$\n'
-            except AssertionError as e:
-                print data
-                print self.aspirin_sdf
-                raise e
+            assert data == self.aspirin_sdf + '$$$$\n'
 
     def test_write_sdf_gz(self):
         """
@@ -376,12 +388,7 @@ class TestMolWriter(TestMolIO):
         # compare files
         with gzip.open(filename) as f:
             data = f.read()
-            try:
-                assert data == self.aspirin_sdf + '$$$$\n'
-            except AssertionError as e:
-                print data
-                print self.aspirin_sdf
-                raise e
+            assert data == self.aspirin_sdf + '$$$$\n'
 
     def test_write_smiles(self):
         """
@@ -402,12 +409,7 @@ class TestMolWriter(TestMolIO):
         # compare files
         with open(filename) as f:
             data = f.read()
-            try:
-                assert data.strip() == self.aspirin_smiles
-            except AssertionError as e:
-                print data
-                print self.aspirin_smiles
-                raise e
+            assert data.strip() == self.aspirin_smiles
 
     def test_write_smiles_gz(self):
         """
@@ -428,24 +430,47 @@ class TestMolWriter(TestMolIO):
         # compare files
         with gzip.open(filename) as f:
             data = f.read()
-            try:
-                assert data.strip() == self.aspirin_smiles
-            except AssertionError as e:
-                print data
-                print self.aspirin_smiles
-                raise e
+            assert data.strip() == self.aspirin_smiles
 
     def test_write_pickle(self):
         """
         Write a pickle.
         """
-        raise unittest.SkipTest()
+        _, filename = tempfile.mkstemp(suffix='.pkl', dir=self.temp_dir)
+        self.writer.open(filename)
+        self.writer.write([self.aspirin])
+        self.writer.close()
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
+
+        # compare molecules
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
+
+        # compare files
+        with open(filename) as f:
+            data = f.read()
+            assert data == cPickle.dumps([self.aspirin],
+                                         cPickle.HIGHEST_PROTOCOL)
 
     def test_write_pickle_gz(self):
         """
         Write a compressed pickle.
         """
-        raise unittest.SkipTest()
+        _, filename = tempfile.mkstemp(suffix='.pkl.gz', dir=self.temp_dir)
+        self.writer.open(filename)
+        self.writer.write([self.aspirin])
+        self.writer.close()
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
+
+        # compare molecules
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
+
+        # compare files
+        with gzip.open(filename) as f:
+            data = f.read()
+            assert data == cPickle.dumps([self.aspirin],
+                                         cPickle.HIGHEST_PROTOCOL)
 
     def test_stereo_setup(self):
         """
