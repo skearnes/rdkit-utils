@@ -6,6 +6,7 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "3-clause BSD"
 
+from contextlib import contextmanager
 import cPickle
 import gzip
 import numpy as np
@@ -34,6 +35,34 @@ class MolIO(object):
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        """
+        Context manager entrance. Returns this object so it can be closed
+        after finishing the 'with' block.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Context manager exit. Closes any open file handles.
+
+        Parameters
+        ----------
+        exc_type : class
+            Exception class that caused the context to exit.
+        exc_val : object
+            Exception that caused the context to exit.
+        exc_tb : traceback
+            Exception traceback.
+
+        Note that all arguments will be None on successful completion of
+        the context. See https://docs.python.org/2/reference/datamodel.html
+        #context-managers for more information. Any exception will be
+        raised as normal after this method is finished (since it does not
+        return True).
+        """
+        self.close()
+
     def open(self, filename, mol_format=None, mode='rb'):
         """
         Open a file for reading or writing.
@@ -57,6 +86,7 @@ class MolIO(object):
             self.mol_format = mol_format
         else:
             self.mol_format = self.guess_mol_format(filename)
+        return self
 
     def close(self):
         """

@@ -370,6 +370,19 @@ class TestMolReader(TestMolIO):
         for i, mol in enumerate(self.reader):
             assert mol.ToBinary() == self.ref_mols[i].ToBinary()
 
+    def test_context_manager(self):
+        """
+        Test using 'with' statement to read molecules.
+        """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for mol in self.ref_mols:
+                f.write(Chem.MolToMolBlock(mol))
+                f.write('$$$$\n')  # molecule delimiter
+        with self.reader.open(filename) as reader:
+            for i, mol in enumerate(reader):
+                assert mol.ToBinary() == self.ref_mols[i].ToBinary()
+
 
 class TestMolWriter(TestMolIO):
     """
