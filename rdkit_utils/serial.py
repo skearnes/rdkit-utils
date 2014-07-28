@@ -115,47 +115,14 @@ class MolReader(MolIO):
         if remove_salts:
             self.salt_remover = SaltRemover()
 
-    def clean_mol(self, mol):
+    def __iter__(self):
         """
-        Clean a molecule.
-
-        Parameters
-        ----------
-        mol : RDKit Mol
-            Molecule.
+        Iterate over molecules.
         """
-        if self.remove_salts:
-            mol = self.salt_remover.StripMol(mol)
-        return mol
+        # TODO: does this work, or do we need to use yield?
+        return self.get_mols()
 
-    def read_mols_from_file(self, filename, mol_format=None):
-        """
-        Read molecules from a file.
-
-        Parameters
-        ----------
-        filename : str
-            Filename.
-        mol_format : str, optional
-            Molecule file format. Currently supports 'sdf', 'smi', and
-            'pkl'. If not provided, the format is inferred from the
-            filename.
-
-        Returns
-        -------
-        A generator yielding multi-conformer RDKit Mol objects.
-        """
-        if mol_format is None:
-            mol_format = self.guess_mol_format(filename)
-        if filename.endswith('.gz'):
-            f = gzip.open(filename)
-        else:
-            f = open(filename)
-        for mol in self.read_mols(f, mol_format=mol_format):
-            yield mol
-        f.close()
-
-    def read_mols(self, f, mol_format):
+    def get_mols(self):
         """
         Read molecules from a file-like object.
 
@@ -165,20 +132,12 @@ class MolReader(MolIO):
         * Have identical (canonical isomeric) SMILES strings
         * Have identical compound names (if set)
 
-        Parameters
-        ----------
-        f : file
-            File-like object.
-        mol_format : str
-            Molecule file format. Currently supports 'sdf' and 'smi'.
-
         Returns
         -------
         A generator yielding (possibly multi-conformer) RDKit Mol objects.
         """
-        source = self._read_mols(f, mol_format)
         parent = None
-        for mol in source:
+        for mol in self._get_mols():
             if parent is None:
                 parent = mol
                 continue
@@ -195,57 +154,41 @@ class MolReader(MolIO):
         parent = self.clean_mol(parent)
         yield parent
 
-    def _read_mols(self, f, mol_format):
+    def _get_mols(self):
         """
         Read molecules from a file-like object.
 
         This method returns individual conformers from a file and does not
         attempt to combine them into multiconformer Mol objects.
 
-        Parameters
-        ----------
-        f : file
-            File-like object.
-        mol_format : str
-            Molecule file format. Currently supports 'sdf' and 'smi'.
-
         Returns
         -------
         A generator yielding RDKit Mol objects.
         """
-        if mol_format == 'sdf':
-            return self._read_sdf(f)
-        elif mol_format == 'smi':
-            return self._read_smiles(f)
-        elif mol_format == 'pkl':
-            return self._read_pickle(f)
+        if self.mol_format == 'sdf':
+            return self._get_mols_from_sdf()
+        elif self.mol_format == 'smi':
+            return self._get_mols_from_smiles()
+        elif self.mol_format == 'pkl':
+            return self._get_mols_from_pickle()
         else:
             raise NotImplementedError('Unrecognized molecule format ' +
-                                      '"{}"'.format(mol_format))
+                                      '"{}"'.format(self.mol_format))
 
-    def _read_sdf(self, f):
+    def _get_mols_from_sdf(self):
         """
         Read SDF molecules from a file-like object.
-
-        Parameters
-        ----------
-        f : file
-            File-like object.
         """
-        supplier = Chem.ForwardSDMolSupplier(f, removeHs=self.remove_hydrogens)
+        supplier = Chem.ForwardSDMolSupplier(self.f,
+                                             removeHs=self.remove_hydrogens)
         for mol in supplier:
             yield mol
 
-    def _read_smiles(self, f):
+    def _get_mols_from_smiles(self):
         """
         Read SMILES molecules from a file-like object.
-
-        Parameters
-        ----------
-        f : file
-            File-like object.
         """
-        for line in f.readlines():
+        for line in self.f.readlines():
             if not line.strip():
                 continue
             line = line.strip().split()
@@ -271,16 +214,11 @@ class MolReader(MolIO):
                 mol.SetProp('_Name', name)
             yield mol
 
-    def _read_pickle(self, f):
+    def _get_mols_from_pickle(self):
         """
         Read pickled molecules from a file-like object.
-
-        Parameters
-        ----------
-        f : file
-            File-like object.
         """
-        for mol in cPickle.load(f):
+        for mol in cPickle.load(self.f):
             yield mol
 
     def are_same_molecule(self, a, b):
@@ -306,6 +244,19 @@ class MolReader(MolIO):
         b_smiles = Chem.MolToSmiles(b, isomericSmiles=True, canonical=True)
         assert a_smiles and b_smiles
         return a_smiles == b_smiles and a_name == b_name
+
+    def clean_mol(self, mol):
+        """
+        Clean a molecule.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        if self.remove_salts:
+            mol = self.salt_remover.StripMol(mol)
+        return mol
 
 
 class MolWriter(MolIO):
