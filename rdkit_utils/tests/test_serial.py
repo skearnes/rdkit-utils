@@ -121,14 +121,16 @@ class TestMolReader(TestMolIO):
         """
         Read an SDF file.
         """
-        mols = self.reader.read_mols_from_file(self.sdf_filename)
+        self.reader.open(self.sdf_filename)
+        mols = self.reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_sdf_gz(self):
         """
         Read a compressed SDF file.
         """
-        mols = self.reader.read_mols_from_file(self.sdf_gz_filename)
+        self.reader.open(self.sdf_gz_filename)
+        mols = self.reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_smi(self):
@@ -137,7 +139,8 @@ class TestMolReader(TestMolIO):
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         AllChem.Compute2DCoords(ref_mol)
-        mols = self.reader.read_mols_from_file(self.smi_filename)
+        self.reader.open(self.smi_filename)
+        mols = self.reader.get_mols()
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
     def test_read_smi_title(self):
@@ -147,7 +150,8 @@ class TestMolReader(TestMolIO):
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         ref_mol.SetProp('_Name', 'aspirin')
         AllChem.Compute2DCoords(ref_mol)
-        mols = self.reader.read_mols_from_file(self.smi_title_filename)
+        self.reader.open(self.smi_title_filename)
+        mols = self.reader.get_mols()
         mol = mols.next()
         assert mol.ToBinary() == ref_mol.ToBinary()
         assert mol.GetProp('_Name') == ref_mol.GetProp('_Name')
@@ -158,7 +162,8 @@ class TestMolReader(TestMolIO):
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         AllChem.Compute2DCoords(ref_mol)
-        mols = self.reader.read_mols_from_file(self.smi_gz_filename)
+        self.reader.open(self.smi_gz_filename)
+        mols = self.reader.get_mols()
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
     def test_read_pickle(self):
@@ -178,7 +183,8 @@ class TestMolReader(TestMolIO):
         Read from a file-like object.
         """
         with open(self.sdf_filename) as f:
-            mols = self.reader.read_mols(f, mol_format='sdf')
+            reader = serial.MolReader(f, mol_format='sdf')
+            mols = reader.get_mols()
             assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_compressed_file_like(self):
@@ -186,7 +192,8 @@ class TestMolReader(TestMolIO):
         Read from a file-like object using gzip.
         """
         with gzip.open(self.sdf_gz_filename) as f:
-            mols = self.reader.read_mols(f, mol_format='sdf')
+            reader = serial.MolReader(f, mol_format='sdf')
+            mols = reader.get_mols()
             assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_read_multiple_sdf(self):
@@ -199,7 +206,8 @@ class TestMolReader(TestMolIO):
                 sdf = Chem.MolToMolBlock(mol)
                 f.write(sdf)
                 f.write('$$$$\n')  # add molecule delimiter
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
         for i in xrange(len(mols)):
@@ -220,7 +228,8 @@ class TestMolReader(TestMolIO):
                 smiles = Chem.MolToSmiles(mol)
                 name = mol.GetProp('_Name')
                 f.write('{}\t{}\n'.format(smiles, name))
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
         for i in xrange(len(mols)):
@@ -249,7 +258,8 @@ class TestMolReader(TestMolIO):
                     f.write('$$$$\n')  # add molecule delimiter
 
         # compare
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
         for i in xrange(len(mols)):
@@ -268,7 +278,8 @@ class TestMolReader(TestMolIO):
         Test hydrogen retention.
         """
         reader = serial.MolReader(remove_hydrogens=False)
-        mols = reader.read_mols_from_file(self.sdf_h_filename)
+        reader.open(self.sdf_h_filename)
+        mols = reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin_h.ToBinary()
 
     def test_remove_hydrogens(self):
@@ -276,7 +287,8 @@ class TestMolReader(TestMolIO):
         Test hydrogen removal.
         """
         reader = serial.MolReader(remove_hydrogens=True)
-        mols = reader.read_mols_from_file(self.sdf_h_filename)
+        reader.open(self.sdf_h_filename)
+        mols = reader.get_mols()
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
 
     def test_remove_salts(self):
@@ -285,7 +297,8 @@ class TestMolReader(TestMolIO):
         """
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
         reader = serial.MolReader(remove_salts=True)
-        mols = reader.read_mols_from_file(self.sdf_salt_filename)
+        reader.open(self.sdf_salt_filename)
+        mols = reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
         for mol, ref_mol in zip(mols, ref_mols):
@@ -299,7 +312,8 @@ class TestMolReader(TestMolIO):
         """
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
         reader = serial.MolReader(remove_salts=False)
-        mols = reader.read_mols_from_file(self.sdf_salt_filename)
+        reader.open(self.sdf_salt_filename)
+        mols = reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
         for mol, ref_mol in zip(mols, ref_mols):
@@ -329,7 +343,8 @@ class TestMolWriter(TestMolIO):
         self.writer.open(filename)
         self.writer.write([self.aspirin])
         self.writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
 
         # compare molecules
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
@@ -352,7 +367,8 @@ class TestMolWriter(TestMolIO):
         self.writer.open(filename)
         self.writer.write([self.aspirin])
         self.writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
 
         # compare molecules
         assert mols.next().ToBinary() == self.aspirin.ToBinary()
@@ -377,7 +393,8 @@ class TestMolWriter(TestMolIO):
         self.writer.open(filename)
         self.writer.write([self.aspirin])
         self.writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
 
         # compare molecules
         assert mols.next().ToBinary() == ref_mol.ToBinary()
@@ -402,7 +419,8 @@ class TestMolWriter(TestMolIO):
         self.writer.open(filename)
         self.writer.write([self.aspirin])
         self.writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
 
         # compare molecules
         assert mols.next().ToBinary() == ref_mol.ToBinary()
@@ -450,7 +468,8 @@ class TestMolWriter(TestMolIO):
         writer.open(filename)
         writer.write([self.levalbuterol])
         writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         assert mols.next().ToBinary() == self.levalbuterol.ToBinary()
 
     def test_stereo_smi(self):
@@ -465,7 +484,8 @@ class TestMolWriter(TestMolIO):
         writer.open(filename)
         writer.write([self.levalbuterol])
         writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         assert mols.next().ToBinary() == ref_mol.ToBinary()
 
     def test_no_stereo_sdf(self):
@@ -477,7 +497,8 @@ class TestMolWriter(TestMolIO):
         writer.open(filename)
         writer.write([self.levalbuterol])
         writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mol = mols.next()
 
         # make sure the written molecule differs from the reference
@@ -499,7 +520,8 @@ class TestMolWriter(TestMolIO):
         writer.open(filename)
         writer.write([self.levalbuterol])
         writer.close()
-        mols = self.reader.read_mols_from_file(filename)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mol = mols.next()
 
         # make sure the written molecule differs from the reference
