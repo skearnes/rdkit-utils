@@ -24,35 +24,46 @@ class TestMolIO(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
 
         # aspirin
-        # the molecule is converted to SDF and then read again because SDF
-        # blocks are treated as 3D by default (also for ibuprofen)
-        aspirin_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
-        aspirin = Chem.MolFromSmiles(aspirin_smiles)
-        aspirin.SetProp('_Name', 'aspirin')
-        aspirin_sdf = Chem.MolToMolBlock(aspirin)
-        self.aspirin = Chem.MolFromMolBlock(aspirin_sdf)
+        self.aspirin = self._get_mol_from_smiles('CC(=O)OC1=CC=CC=C1C(=O)O',
+                                                 'aspirin')
         self.aspirin_h = Chem.AddHs(self.aspirin)
-        Chem.SanitizeMol(self.aspirin_h)
-        aspirin_sodium = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)[O-].[Na+]')
-        aspirin_sodium.SetProp('_Name', 'aspirin sodium')
-        self.aspirin_sodium = Chem.MolFromMolBlock(
-            Chem.MolToMolBlock(aspirin_sodium))
+        self.aspirin_sodium = self._get_mol_from_smiles(
+            'CC(=O)OC1=CC=CC=C1C(=O)[O-].[Na+]', 'aspirin sodium')
 
         # levalbuterol (chiral)
-        levalbuterol_smiles = 'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O'
-        levalbuterol = Chem.MolFromSmiles(levalbuterol_smiles)
-        levalbuterol.SetProp('_Name', 'levalbuterol')
-        AllChem.Compute2DCoords(levalbuterol)
-        levalbuterol_sdf = Chem.MolToMolBlock(levalbuterol, includeStereo=True)
-        self.levalbuterol = Chem.MolFromMolBlock(levalbuterol_sdf)
-        levalbuterol_hcl = Chem.MolFromSmiles(
-            'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O.Cl')
-        levalbuterol_hcl.SetProp('_Name', 'levalbuterol hydrochloride')
-        self.levalbuterol_hcl = Chem.MolFromMolBlock(
-            Chem.MolToMolBlock(levalbuterol_hcl))
+        self.levalbuterol = self._get_mol_from_smiles(
+            'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O', 'levalbuterol')
+        self.levalbuterol_hcl = self._get_mol_from_smiles(
+            'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O.Cl',
+            'levalbuterol hydrochloride')
 
         self.ref_mols = [self.aspirin, self.levalbuterol]
         self.reader = serial.MolReader()
+
+    def _get_mol_from_smiles(self, smiles, name=None):
+        """
+        Construct a molecule from a SMILES string.
+
+        Molecules loaded from SMILES strings have zero conformers, but
+        molecules loaded from SDF blocks are treated as 3D and have one
+        conformer even if coordinates are not set. This method dumps the
+        molecule to SDF and loads it again to obtain a molecule with one
+        conformer.
+
+        Parameters
+        ----------
+        smiles : str
+            SMILES string.
+        name : str, optional
+            Molecule name.
+        """
+        mol = Chem.MolFromSmiles(smiles)
+        if name is not None:
+            mol.SetProp('_Name', name)
+        AllChem.Compute2DCoords(mol)  # required to preserve stereo
+        sdf = Chem.MolToMolBlock(mol, includeStereo=True)
+        mol_with_conf = Chem.MolFromMolBlock(sdf)
+        return mol_with_conf
 
     def tearDown(self):
         """
@@ -92,7 +103,6 @@ class TestMolReader(TestMolIO):
         Read a SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
-        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             f.write(Chem.MolToSmiles(self.aspirin))
@@ -106,7 +116,6 @@ class TestMolReader(TestMolIO):
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
         ref_mol.SetProp('_Name', 'aspirin')
-        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             f.write('{}\t{}'.format(Chem.MolToSmiles(self.aspirin), 'aspirin'))
@@ -121,7 +130,6 @@ class TestMolReader(TestMolIO):
         Read a compressed SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
-        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
         with gzip.open(filename, 'wb') as f:
             f.write(Chem.MolToSmiles(self.aspirin))
@@ -199,7 +207,6 @@ class TestMolReader(TestMolIO):
         ref_mols = []
         for mol in self.ref_mols:
             mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
-            AllChem.Compute2DCoords(mol)
             ref_mols.append(mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         with open(filename, 'wb') as f:
@@ -373,7 +380,6 @@ class TestMolWriter(TestMolIO):
         Write a SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
-        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
@@ -394,7 +400,6 @@ class TestMolWriter(TestMolIO):
         Write a compressed SMILES file.
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.aspirin))
-        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi.gz', dir=self.temp_dir)
         self.writer.open(filename)
         self.writer.write([self.aspirin])
@@ -481,7 +486,6 @@ class TestMolWriter(TestMolIO):
         """
         ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(self.levalbuterol,
                                                       isomericSmiles=True))
-        AllChem.Compute2DCoords(ref_mol)
         _, filename = tempfile.mkstemp(suffix='.smi', dir=self.temp_dir)
         writer = serial.MolWriter(stereo=True)
         writer.open(filename)
