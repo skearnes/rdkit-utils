@@ -222,6 +222,31 @@ class TestMolReader(TestMolIO):
 
     def test_read_multiconformer(self):
         """
+        Read a multiconformer SDF file.
+        """
+
+        # generate conformers
+        engine = conformers.ConformerGenerator(max_conformers=3,
+                                               pool_multiplier=1)
+        ref_mol = engine.generate_conformers(self.aspirin)
+        assert ref_mol.GetNumConformers() > 1
+
+        # write to disk
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for conf in ref_mol.GetConformers():
+                f.write(Chem.MolToMolBlock(ref_mol, confId=conf.GetId()))
+                f.write('$$$$\n')  # add molecule delimiter
+
+        # compare
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
+        mols = list(mols)
+        assert len(mols) == 1
+        assert mols[0].ToBinary() == ref_mol.ToBinary()
+
+    def test_read_multiple_multiconformer(self):
+        """
         Read a multiconformer SDF file containing multiple molecules.
         """
 
@@ -239,7 +264,8 @@ class TestMolReader(TestMolIO):
         with open(filename, 'wb') as f:
             for mol in ref_mols:
                 for conf in mol.GetConformers():
-                    f.write(Chem.MolToMolBlock(mol, confId=conf.GetId()))
+                    f.write(Chem.MolToMolBlock(mol, includeStereo=1,
+                                               confId=conf.GetId()))
                     f.write('$$$$\n')  # add molecule delimiter
 
         # compare
@@ -247,8 +273,8 @@ class TestMolReader(TestMolIO):
         mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
-        for i in xrange(len(mols)):
-            assert mols[i].ToBinary() == ref_mols[i].ToBinary()
+        for mol, ref_mol in zip(mols, ref_mols):
+            assert mol.ToBinary() == ref_mol.ToBinary()
 
     def test_are_same_molecule(self):
         """

@@ -279,7 +279,7 @@ class MolReader(MolIO):
             return mol.GetProp('isomericSmiles')
         else:
             smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
-            mol.SetProp('isomericSmiles', smiles)
+            mol.SetProp('isomericSmiles', smiles, computed=True)
             return smiles
 
     def clean_mol(self, mol):
