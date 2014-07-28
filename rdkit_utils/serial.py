@@ -106,14 +106,19 @@ class MolReader(MolIO):
         Whether to remove hydrogens from molecules.
     remove_salts : bool, optional (default True)
         Whether to remove salts from molecules.
+    compute_2d_coords : bool, optional (default True)
+        Whether to compute 2D coordinates when reading SMILES. If molecules
+        are written to SDF without 2D coordinates, stereochemistry
+        information will be lost.
     """
     def __init__(self, f=None, mol_format=None, remove_hydrogens=False,
-                 remove_salts=True):
+                 remove_salts=True, compute_2d_coords=True):
         super(MolReader, self).__init__(f, mol_format)
         self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
         if remove_salts:
             self.salt_remover = SaltRemover()
+        self.compute_2d_coords = compute_2d_coords
 
     def __iter__(self):
         """
@@ -204,6 +209,9 @@ class MolReader(MolIO):
             else:
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
                 Chem.SanitizeMol(mol)
+
+            if self.compute_2d_coords:
+                AllChem.Compute2DCoords(mol)
 
             if name is not None:
                 mol.SetProp('_Name', name)

@@ -38,7 +38,7 @@ class TestMolIO(unittest.TestCase):
             'levalbuterol hydrochloride')
 
         self.ref_mols = [self.aspirin, self.levalbuterol]
-        self.reader = serial.MolReader()
+        self.reader = serial.MolReader(compute_2d_coords=False)
 
     def _get_mol_from_smiles(self, smiles, name=None):
         """
