@@ -357,6 +357,19 @@ class TestMolReader(TestMolIO):
             desalted = self.reader.clean_mol(ref_mol)
             assert mol.GetNumAtoms() > desalted.GetNumAtoms()
 
+    def test_iterator(self):
+        """
+        Test MolWriter.__iter__.
+        """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for mol in self.ref_mols:
+                f.write(Chem.MolToMolBlock(mol))
+                f.write('$$$$\n')  # molecule delimiter
+        self.reader.open(filename)
+        for i, mol in enumerate(self.reader):
+            assert mol.ToBinary() == self.ref_mols[i].ToBinary()
+
 
 class TestMolWriter(TestMolIO):
     """

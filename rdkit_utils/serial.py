@@ -124,7 +124,6 @@ class MolReader(MolIO):
         """
         Iterate over molecules.
         """
-        # TODO: does this work, or do we need to use yield?
         return self.get_mols()
 
     def get_mols(self):
