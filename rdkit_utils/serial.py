@@ -64,8 +64,7 @@ class MolIO(object):
         if self.f is not None:
             self.f.close()
 
-    @staticmethod
-    def guess_mol_format(filename):
+    def guess_mol_format(self, filename):
         """
         Guess molecule file format from filename.
 
@@ -234,16 +233,49 @@ class MolReader(MolIO):
         a, b : RDKit Mol
             Molecules to compare.
         """
-        a_name = None
-        if a.HasProp('_Name'):
-            a_name = a.GetProp('_Name')
-        b_name = None
-        if b.HasProp('_Name'):
-            b_name = b.GetProp('_Name')
-        a_smiles = Chem.MolToSmiles(a, isomericSmiles=True, canonical=True)
-        b_smiles = Chem.MolToSmiles(b, isomericSmiles=True, canonical=True)
+
+        # get names, if available
+        a_name = self._get_name(a)
+        b_name = self._get_name(b)
+
+        # get canonical isomeric SMILES
+        a_smiles = self._get_isomeric_smiles(a)
+        b_smiles = self._get_isomeric_smiles(b)
         assert a_smiles and b_smiles
+
+        # test for same molecule
         return a_smiles == b_smiles and a_name == b_name
+
+    def _get_name(self, mol):
+        """
+        Get molecule name, if available.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        if mol.HasProp('_Name'):
+            return mol.GetProp('_Name')
+        else:
+            return None
+
+    def _get_isomeric_smiles(self, mol):
+        """
+        Get canonical isomeric SMILES for a molecule. Also sets the
+        isomericSmiles property to avoid recomputing.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        if mol.HasProp('isomericSmiles'):
+            return mol.GetProp('isomericSmiles')
+        else:
+            smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+            mol.SetProp('isomericSmiles', smiles)
+            return smiles
 
     def clean_mol(self, mol):
         """
