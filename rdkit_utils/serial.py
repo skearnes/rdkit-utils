@@ -15,48 +15,105 @@ from rdkit.Chem import AllChem
 from rdkit.Chem.SaltRemover import SaltRemover
 
 
-def guess_mol_format(filename):
+class MolIO(object):
     """
-    Guess molecule file format from filename. Currently supports SDF and
-    SMILES.
+    Base class for molecule I/O.
 
     Parameters
     ----------
-    filename : str
-        Filename.
+    f : file, optional
+        File-like object.
+    mol_format : str, optional
+        Molecule file format. Currently supports 'sdf', 'smi', and 'pkl'.
     """
+    def __init__(self, f=None, mol_format=None):
+        self.f = f
+        self.mol_format = mol_format
 
-    # strip gzip suffix
-    if filename.endswith('.gz'):
-        filename = os.path.splitext(filename)[0]
+    def __del__(self):
+        self.close()
 
-    if filename.endswith('.sdf'):
-        mol_format = 'sdf'
-    elif filename.endswith(('.smi', '.can', '.ism')):
-        mol_format = 'smi'
-    elif filename.endswith('.pkl'):
-        mol_format = 'pkl'
-    else:
-        raise NotImplementedError('Unrecognized file format.')
-    return mol_format
+    def open(self, filename, mol_format=None, mode='rb'):
+        """
+        Open a file for reading or writing.
+
+        Parameters
+        ----------
+        filename : str
+            Filename.
+        mol_format : str, optional
+            Molecule file format. Currently supports 'sdf', 'smi', and
+            'pkl'. If not provided, the format is inferred from the
+            filename.
+        mode : str, optional (default 'rb')
+            Mode used to open file.
+        """
+        if filename.endswith('.gz'):
+            self.f = gzip.open(filename, mode)
+        else:
+            self.f = open(filename, mode)
+        if mol_format is not None:
+            self.mol_format = mol_format
+        else:
+            self.mol_format = self.guess_mol_format(filename)
+
+    def close(self):
+        """
+        Close output file.
+        """
+        if self.f is not None:
+            self.f.close()
+
+    @staticmethod
+    def guess_mol_format(filename):
+        """
+        Guess molecule file format from filename.
+
+        Parameters
+        ----------
+        filename : str
+            Filename.
+        """
+
+        # strip gzip suffix
+        if filename.endswith('.gz'):
+            filename = os.path.splitext(filename)[0]
+
+        # guess format from extension
+        if filename.endswith('.sdf'):
+            mol_format = 'sdf'
+        elif filename.endswith(('.smi', '.can', '.ism')):
+            mol_format = 'smi'
+        elif filename.endswith('.pkl'):
+            mol_format = 'pkl'
+        else:
+            raise NotImplementedError('Unrecognized file format.')
+        return mol_format
 
 
-class MolReader(object):
+class MolReader(MolIO):
     """
     Read molecules from files and file-like objects. Supports SDF, SMILES,
     and RDKit binary format (via pickle).
 
     Parameters
     ----------
+    f : file, optional
+        File-like object.
+    mol_format : str, optional
+        Molecule file format. Currently supports 'sdf', 'smi', and 'pkl'.
     remove_hydrogens : bool, optional (default False)
         Whether to remove hydrogens from molecules.
     remove_salts : bool, optional (default True)
         Whether to remove salts from molecules.
     """
-    def __init__(self, remove_hydrogens=False, remove_salts=True):
+    def __init__(self, f=None, mol_format=None, remove_hydrogens=False,
+                 remove_salts=True):
+        super(MolReader, self).__init__(f, mol_format)
         self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
-        self.salt_remover = SaltRemover()
+        if remove_salts:
+            self.salt_remover = SaltRemover()
 
     def clean_mol(self, mol):
         """
@@ -89,7 +146,7 @@ class MolReader(object):
         A generator yielding multi-conformer RDKit Mol objects.
         """
         if mol_format is None:
-            mol_format = guess_mol_format(filename)
+            mol_format = self.guess_mol_format(filename)
         if filename.endswith('.gz'):
             f = gzip.open(filename)
         else:
@@ -251,7 +308,7 @@ class MolReader(object):
         return a_smiles == b_smiles and a_name == b_name
 
 
-class MolWriter(object):
+class MolWriter(MolIO):
     """
     Write molecules to files or file-like objects. Supports SDF, SMILES,
     and RDKit binary format (via pickle).
@@ -266,14 +323,10 @@ class MolWriter(object):
         Whether to preserve stereochemistry in output.
     """
     def __init__(self, f=None, mol_format=None, stereo=True):
-        self.f = f
-        self.mol_format = mol_format
+        super(MolWriter, self).__init__(f, mol_format)
         self.stereo = stereo
 
-    def __del__(self):
-        self.close()
-
-    def open(self, filename, mol_format=None):
+    def open(self, filename, mol_format=None, mode='wb'):
         """
         Open output file.
 
@@ -285,22 +338,10 @@ class MolWriter(object):
             Molecule file format. Currently supports 'sdf', 'smi', and
             'pkl'. If not provided, the format is inferred from the
             filename.
+        mode : str, optional (default 'wb')
+            Mode used to open file.
         """
-        if filename.endswith('.gz'):
-            self.f = gzip.open(filename, 'wb')
-        else:
-            self.f = open(filename, 'wb')
-        if mol_format is not None:
-            self.mol_format = mol_format
-        else:
-            self.mol_format = guess_mol_format(filename)
-
-    def close(self):
-        """
-        Close output file.
-        """
-        if self.f is not None:
-            self.f.close()
+        return super(MolWriter, self).open(filename, mol_format, mode)
 
     def write(self, mols):
         """
