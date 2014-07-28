@@ -205,11 +205,6 @@ class MolReader(MolIO):
                 mol = Chem.MolFromSmiles(smiles, sanitize=False)
                 Chem.SanitizeMol(mol)
 
-            # compute 2D coordinates
-            # this is required for preservation of stereochemistry when
-            # writing to SDF files or blocks
-            AllChem.Compute2DCoords(mol)
-
             if name is not None:
                 mol.SetProp('_Name', name)
             yield mol
