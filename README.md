@@ -8,21 +8,29 @@ The utilities in this project are designed to streamline common processes in che
 Examples
 --------
 
-Read molecules from multiple file formats using the same interface. The `MolReader` class automatically __perceives conformers__ and can optionally __remove salts__&mdash;features that are not provided by the molecule suppliers in the RDKit:
+### High-level molecule reading and writing
+Read and write multiple molecule file formats using the same interface. The `MolReader` class automatically __perceives conformers__ and can optionally __remove salts__&mdash;features that are not provided by the molecule suppliers in the RDKit:
 
 ```python
-from rdkit_utils import serial
+from rdkit_utils.serial import MolReader
 
-reader = serial.MolReader()
+# read a gzipped SDF file
+reader = MolReader()
+with reader.open('molecules.sdf.gz') as mols:
+    for mol in mols:
+        ...
 
-# get a molecule generator
-mols = reader.read_mols_from_file('molecules.sdf.gz')  # gzipped files are OK
-mols = reader.read_mols_from_file('molecules.smi')  # it can read SMILES, too
+# read SMILES
+reader = MolReader()
+with reader.open('molecules.smi') as mols:
+    for mol in mols:
+        ...
+        
 
 # read from a file-like object
-with open('molecules.sdf.gz') as f:
-    mols = reader.read_mols(f, mol_format='sdf')
-    ...
+with open('molecules.sdf') as f:
+    for mol in MolReader(f, mol_format='sdf'):
+        ...
 ```
 
 Generate conformers with minimization _prior_ to pruning:
@@ -31,13 +39,13 @@ Generate conformers with minimization _prior_ to pruning:
 from rdkit_utils import conformers, serial
 
 reader = serial.MolReader()
-mols = reader.read_mols_from_file('molecules.sdf.gz')
+mols = reader.open('molecules.sdf')
 
 engine = conformers.ConformerGenerator(max_conformers=10)
 expanded = []
 for mol in mols:
     expanded.append(engine.generate_conformers(mol))
-...
+    ...
 ```
 
 Additionally, the `ConformerGenerator` class starts with a pool of conformers and prunes out conformers within an RMSD threshold.
