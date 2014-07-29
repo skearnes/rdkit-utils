@@ -1,9 +1,7 @@
 rdkit-utils [![Build Status](https://travis-ci.org/skearnes/rdkit-utils.svg?branch=master)](https://travis-ci.org/skearnes/rdkit-utils)
 ===========
 
-Utilities for working with the [RDKit](http://www.rdkit.org/)
-
-The utilities in this project are designed to streamline common processes in cheminformatics, saving you time and avoiding some esoteric problems.
+Cheminformatics utilities based on the [RDKit](http://www.rdkit.org/)
 
 Examples
 --------
