@@ -22,7 +22,7 @@ class MolIO(object):
 
     Parameters
     ----------
-    f : file, optional
+    f : file-like, optional
         File-like object.
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf', 'smi', and 'pkl'.
@@ -30,6 +30,9 @@ class MolIO(object):
     def __init__(self, f=None, mol_format=None):
         self.f = f
         self.mol_format = mol_format
+
+        # placeholder
+        self.filename = None
 
     def __del__(self):
         self.close()
@@ -77,6 +80,7 @@ class MolIO(object):
         mode : str, optional (default 'rb')
             Mode used to open file.
         """
+        self.filename = filename
         if filename.endswith('.gz'):
             self.f = gzip.open(filename, mode)
         else:
@@ -89,10 +93,13 @@ class MolIO(object):
 
     def close(self):
         """
-        Close output file.
+        Close output file (only if it was opened by this object).
         """
-        if self.f is not None:
+        if self.f is not None and self.filename is not None:
             self.f.close()
+
+        # cleanup
+        self.filename = None
 
     def guess_mol_format(self, filename):
         """
