@@ -6,7 +6,6 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "3-clause BSD"
 
-from contextlib import contextmanager
 import cPickle
 import gzip
 import numpy as np
