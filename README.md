@@ -10,7 +10,7 @@ Highlights
 Read and write multiple molecule file formats using the same interface. The `MolReader` class automatically __perceives conformers__ and can optionally __remove salts__.
 
 ```python
-from rdkit_utils.serial import MolReader
+from rdkit_utils.serial import MolReader, MolWriter
 
 # read a gzipped SDF file
 reader = MolReader()
@@ -28,6 +28,11 @@ with reader.open('molecules.smi') as mols:
 with open('molecules.sdf') as f:
     for mol in MolReader(f, mol_format='sdf'):
         ...
+
+# write to gzipped SDF
+writer = MolWriter()
+with writer.open('molecules.sdf.gz') as f:
+    f.write(mols)
 ```
 
 ### Conformer generation
