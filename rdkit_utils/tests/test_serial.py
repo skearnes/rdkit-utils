@@ -98,7 +98,7 @@ class TestMolIO(unittest.TestCase):
         assert self.reader.f.closed
 
         # also test the context manager
-        with self.reader.open(filename) as reader:
+        with self.reader.open(filename):
             pass
         assert self.reader.f.closed
 
