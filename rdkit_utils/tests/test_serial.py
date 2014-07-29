@@ -334,7 +334,7 @@ class TestMolReader(TestMolIO):
         assert len(mols) == 2
         for mol, ref_mol in zip(mols, ref_mols):
             assert mol.GetNumAtoms() < ref_mol.GetNumAtoms()
-            desalted = self.reader.clean_mol(ref_mol)
+            desalted = self.reader.process_mol(ref_mol)
             assert mol.ToBinary() == desalted.ToBinary()
 
     def test_no_remove_salts(self):
@@ -354,7 +354,7 @@ class TestMolReader(TestMolIO):
         assert len(mols) == 2
         for mol, ref_mol in zip(mols, ref_mols):
             assert mol.ToBinary() == ref_mol.ToBinary()
-            desalted = self.reader.clean_mol(ref_mol)
+            desalted = self.reader.process_mol(ref_mol)
             assert mol.GetNumAtoms() > desalted.GetNumAtoms()
 
     def test_iterator(self):
