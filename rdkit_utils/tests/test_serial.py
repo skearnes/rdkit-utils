@@ -71,6 +71,53 @@ class TestMolIO(unittest.TestCase):
         """
         shutil.rmtree(self.temp_dir)
 
+    def test_guess_mol_format(self):
+        """
+        Test MolIO.guess_mol_format.
+        """
+        mol_formats = {
+            'pkl': ['test.pkl', 'test.pkl.gz', 'test.test.pkl',
+                    'test.test.pkl.gz'],
+            'sdf': ['test.sdf', 'test.sdf.gz', 'test.test.sdf',
+                    'test.test.sdf.gz'],
+            'smi': ['test.smi', 'test.smi.gz', 'test.can', 'test.can.gz',
+                    'test.ism', 'test.ism.gz', 'test.test.smi',
+                    'test.test.smi.gz']
+        }
+        for mol_format in mol_formats.keys():
+            for filename in mol_formats[mol_format]:
+                assert self.reader.guess_mol_format(filename) == mol_format
+
+    def test_close_context(self):
+        """
+        Make sure MolIO closes files it opened.
+        """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        self.reader.open(filename)
+        self.reader.close()
+        assert self.reader.f.closed
+
+        # also test the context manager
+        with self.reader.open(filename) as reader:
+            pass
+        assert self.reader.f.closed
+
+    def test_not_close_other(self):
+        """
+        Make sure MolIO doesn't close files it didn't open.
+        """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename) as f:
+            reader = serial.MolReader(f, mol_format='sdf')
+            reader.close()
+            assert not f.closed
+
+        # also test the context manager
+        with open(filename) as g:
+            with serial.MolReader(g, mol_format='sdf') as reader:
+                pass
+            assert not g.closed
+
 
 class TestMolReader(TestMolIO):
     """
