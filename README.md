@@ -26,7 +26,6 @@ with reader.open('molecules.smi') as mols:
     for mol in mols:
         ...
         
-
 # read from a file-like object
 with open('molecules.sdf') as f:
     for mol in MolReader(f, mol_format='sdf'):
