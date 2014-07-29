@@ -27,5 +27,3 @@ class TestPicklableMol(unittest.TestCase):
         # make sure stereochemistry is preserved
         for a, b in zip(mol.GetAtoms(), self.mol.GetAtoms()):
             assert a.GetChiralTag() == b.GetChiralTag()
-
-
