@@ -114,7 +114,7 @@ class TestMolIO(unittest.TestCase):
 
         # also test the context manager
         with open(filename) as g:
-            with serial.MolReader(g, mol_format='sdf') as reader:
+            with serial.MolReader(g, mol_format='sdf'):
                 pass
             assert not g.closed
 
