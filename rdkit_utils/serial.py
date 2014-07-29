@@ -181,10 +181,10 @@ class MolReader(MolIO):
                 else:
                     continue  # skip duplicate molecules without conformers
             else:
-                parent = self.process_mol(parent)
+                parent = self.clean_mol(parent)
                 yield parent
                 parent = mol
-        parent = self.process_mol(parent)
+        parent = self.clean_mol(parent)
         yield parent
 
     def _get_mols(self):
