@@ -17,6 +17,7 @@ from rdkit.Chem.SaltRemover import SaltRemover
 
 from rdkit_utils import PicklableMol
 
+
 class MolIO(object):
     """
     Base class for molecule I/O.
@@ -182,10 +183,10 @@ class MolReader(MolIO):
                 else:
                     continue  # skip duplicate molecules without conformers
             else:
-                parent = self.clean_mol(parent)
+                parent = self.process_mol(parent)
                 yield parent
                 parent = mol
-        parent = self.clean_mol(parent)
+        parent = self.process_mol(parent)
         yield parent
 
     def _get_mols(self):
@@ -311,9 +312,9 @@ class MolReader(MolIO):
             mol.SetProp('isomericSmiles', smiles, computed=True)
             return smiles
 
-    def clean_mol(self, mol):
+    def process_mol(self, mol):
         """
-        Clean a molecule.
+        Miscellaneous molecule processing.
 
         Parameters
         ----------

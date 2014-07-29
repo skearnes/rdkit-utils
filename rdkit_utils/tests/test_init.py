@@ -2,24 +2,30 @@
 Tests for miscellaneous utilities.
 """
 import cPickle
-from StringIO import StringIO
+import unittest
 
-from rdkit_utils import serial
+from rdkit import Chem
+
+from rdkit_utils import PicklableMol
 
 
-def test_picklable_mol():
-    """Test PicklableMol."""
-    mols = serial.read_mols(StringIO(test_smiles), mol_format='smi')
-    mols = list(mols)
-    mol = mols[0]
-    assert mol.HasProp('_Name')
-    state = cPickle.dumps(mol, cPickle.HIGHEST_PROTOCOL)
-    new = cPickle.loads(state)
-    assert new.HasProp('_Name')
-    assert new.GetProp('_Name') == mol.GetProp('_Name')
+class TestPicklableMol(unittest.TestCase):
+    def setUp(self):
+        """
+        Set up for tests.
+        """
+        self.mol = Chem.MolFromSmiles('CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O')
+        self.mol.SetProp('_Name', 'levalbuterol')
 
-    # make sure stereochemistry is preserved
-    for a, b in zip(mol.GetAtoms(), new.GetAtoms()):
-        assert a.GetChiralTag() == b.GetChiralTag()
+    def test_picklable_mol(self):
+        """Test PicklableMol."""
+        mol = cPickle.loads(cPickle.dumps(PicklableMol(self.mol),
+                                          cPickle.HIGHEST_PROTOCOL))
+        assert mol.HasProp('_Name')
+        assert mol.GetProp('_Name') == self.mol.GetProp('_Name')
 
-test_smiles = 'CC(C)(C)NC[C@@H](C1=CC(=C(C=C1)O)CO)O levalbuterol'
+        # make sure stereochemistry is preserved
+        for a, b in zip(mol.GetAtoms(), self.mol.GetAtoms()):
+            assert a.GetChiralTag() == b.GetChiralTag()
+
+
