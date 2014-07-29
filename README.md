@@ -9,7 +9,7 @@ Examples
 --------
 
 ### High-level molecule reading and writing
-Read and write multiple molecule file formats using the same interface. The `MolReader` class automatically __perceives conformers__ and can optionally __remove salts__&mdash;features that are not provided by the molecule suppliers in the RDKit:
+Read and write multiple molecule file formats using the same interface. The `MolReader` class automatically __perceives conformers__ and can optionally __remove salts__.
 
 ```python
 from rdkit_utils.serial import MolReader
@@ -32,7 +32,7 @@ with open('molecules.sdf') as f:
         ...
 ```
 
-Generate conformers with minimization _prior_ to pruning:
+Generate conformers with minimization _prior_ to pruning.
 
 ```python
 from rdkit_utils import conformers, serial
