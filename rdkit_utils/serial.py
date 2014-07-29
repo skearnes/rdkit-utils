@@ -15,8 +15,6 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.SaltRemover import SaltRemover
 
-from rdkit_utils import PicklableMol
-
 
 class MolIO(object):
     """
@@ -312,9 +310,9 @@ class MolReader(MolIO):
             mol.SetProp('isomericSmiles', smiles, computed=True)
             return smiles
 
-    def process_mol(self, mol):
+    def clean_mol(self, mol):
         """
-        Miscellaneous molecule processing.
+        Clean a molecule.
 
         Parameters
         ----------
@@ -323,7 +321,6 @@ class MolReader(MolIO):
         """
         if self.remove_salts:
             mol = self.salt_remover.StripMol(mol)
-        mol = PicklableMol(mol)  # make molecule picklable
         return mol
 
 
