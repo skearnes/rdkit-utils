@@ -3,8 +3,8 @@ rdkit-utils [![Build Status](https://travis-ci.org/skearnes/rdkit-utils.svg?bran
 
 Cheminformatics utilities based on the [RDKit](http://www.rdkit.org/)
 
-Examples
---------
+Highlights
+----------
 
 ### High-level molecule reading and writing
 Read and write multiple molecule file formats using the same interface. The `MolReader` class automatically __perceives conformers__ and can optionally __remove salts__.
@@ -30,7 +30,8 @@ with open('molecules.sdf') as f:
         ...
 ```
 
-Generate conformers with minimization _prior_ to pruning.
+### Conformer generation
+Generate conformers with minimization _prior_ to pruning. The `ConformerGenerator` class starts with a pool of conformers and prunes out conformers within an RMSD threshold.
 
 ```python
 from rdkit_utils import conformers, serial
@@ -44,5 +45,3 @@ for mol in mols:
     expanded.append(engine.generate_conformers(mol))
     ...
 ```
-
-Additionally, the `ConformerGenerator` class starts with a pool of conformers and prunes out conformers within an RMSD threshold.
