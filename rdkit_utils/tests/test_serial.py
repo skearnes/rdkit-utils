@@ -602,3 +602,21 @@ class TestMolWriter(TestMolIO):
         # assert mol.ToBinary() == self.levalbuterol.ToBinary()
         assert Chem.MolToSmiles(mol, isomericSmiles=True) == Chem.MolToSmiles(
             self.levalbuterol, isomericSmiles=True)
+
+    def test_context_manager(self):
+        """
+        Test use of 'with' statement to write molecules.
+        """
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with self.writer.open(filename) as writer:
+            writer.write([self.aspirin])
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
+
+        # compare molecules
+        assert mols.next().ToBinary() == self.aspirin.ToBinary()
+
+        # compare files
+        with open(filename) as f:
+            data = f.read()
+            assert data == self.aspirin_sdf + '$$$$\n'
