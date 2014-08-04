@@ -305,6 +305,10 @@ class MolReader(MolIO):
         Get canonical isomeric SMILES for a molecule. Also sets the
         isomericSmiles property to avoid recomputing.
 
+        Note that stereochemistry is not assigned from 3D coordinates; it
+        must be explicitly present in the file or it will not show up in
+        the SMILES conversion.
+
         Parameters
         ----------
         mol : RDKit Mol
