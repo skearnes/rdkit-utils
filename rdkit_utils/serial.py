@@ -10,6 +10,7 @@ import cPickle
 import gzip
 import numpy as np
 import os
+import warnings
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -242,28 +243,33 @@ class MolReader(MolIO):
         Read SMILES molecules from a file-like object.
         """
         for line in self.f.readlines():
-            if not line.strip():
+            line = line.strip()
+            if not line:
                 continue
-            line = line.strip().split()
-            if len(line) > 1:
-                smiles, name = line
+            split_line = line.split()
+            if len(split_line) > 1:
+                smiles, name = split_line
             else:
-                smiles, = line
+                smiles, = split_line
                 name = None
 
             # hydrogens are removed by default, which triggers sanitization
-            if self.remove_hydrogens:
-                mol = Chem.MolFromSmiles(smiles)
+            try:
+                if self.remove_hydrogens:
+                    mol = Chem.MolFromSmiles(smiles)
+                else:
+                    mol = Chem.MolFromSmiles(smiles, sanitize=False)
+                    Chem.SanitizeMol(mol)
+
+                if self.compute_2d_coords:
+                    AllChem.Compute2DCoords(mol)
+            except Exception:
+                warnings.warn("Skipping " + line)
+                continue
             else:
-                mol = Chem.MolFromSmiles(smiles, sanitize=False)
-                Chem.SanitizeMol(mol)
-
-            if self.compute_2d_coords:
-                AllChem.Compute2DCoords(mol)
-
-            if name is not None:
-                mol.SetProp('_Name', name)
-            yield mol
+                if name is not None:
+                    mol.SetProp('_Name', name)
+                yield mol
 
     def _get_mols_from_pickle(self):
         """
