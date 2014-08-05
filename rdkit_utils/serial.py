@@ -178,8 +178,6 @@ class MolReader(MolIO):
         """
         parent = None
         for mol in self._get_mols():
-            if mol is None:
-                continue  # skip read failures
             if parent is None:
                 parent = mol
                 continue
@@ -227,7 +225,8 @@ class MolReader(MolIO):
             except Exception:
                 continue
             else:
-                yield mol
+                if mol is not None:
+                    yield mol
 
     def _get_mols_from_sdf(self):
         """
