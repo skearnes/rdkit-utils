@@ -178,6 +178,8 @@ class MolReader(MolIO):
         """
         parent = None
         for mol in self._get_mols():
+            if mol is None:
+                continue  # skip read failures
             if parent is None:
                 parent = mol
                 continue
