@@ -2,6 +2,7 @@
 Tests for serial.py.
 """
 import cPickle
+from cStringIO import StringIO
 import gzip
 import shutil
 import tempfile
@@ -429,6 +430,15 @@ class TestMolReader(TestMolIO):
         with self.reader.open(filename) as reader:
             for i, mol in enumerate(reader):
                 assert mol.ToBinary() == self.ref_mols[i].ToBinary()
+
+    def test_skip_failures(self):
+        """
+        Test skip read failures.
+        """
+        smiles = 'CO(C)C'
+        reader = serial.MolReader(StringIO(smiles), 'smi')
+        mols = list(reader.get_mols())
+        assert len(mols) == 0
 
 
 class TestMolWriter(TestMolIO):

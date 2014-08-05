@@ -193,8 +193,9 @@ class MolReader(MolIO):
                 parent = self.clean_mol(parent)
                 yield parent
                 parent = mol
-        parent = self.clean_mol(parent)
-        yield parent
+        if parent is not None:
+            parent = self.clean_mol(parent)
+            yield parent
 
     def _get_mols(self):
         """
@@ -208,14 +209,25 @@ class MolReader(MolIO):
         A generator yielding RDKit Mol objects.
         """
         if self.mol_format == 'sdf':
-            return self._get_mols_from_sdf()
+            mols = self._get_mols_from_sdf()
         elif self.mol_format == 'smi':
-            return self._get_mols_from_smiles()
+            mols = self._get_mols_from_smiles()
         elif self.mol_format == 'pkl':
-            return self._get_mols_from_pickle()
+            mols = self._get_mols_from_pickle()
         else:
             raise NotImplementedError('Unrecognized molecule format ' +
                                       '"{}"'.format(self.mol_format))
+
+        # skip read errors
+        while True:
+            try:
+                mol = mols.next()
+            except StopIteration:
+                break
+            except Exception:
+                continue
+            else:
+                yield mol
 
     def _get_mols_from_sdf(self):
         """
