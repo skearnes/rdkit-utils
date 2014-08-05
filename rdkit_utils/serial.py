@@ -224,6 +224,7 @@ class MolReader(MolIO):
             except StopIteration:
                 break
             except Exception:
+                warnings.warn('Skipping molecule.')
                 continue
             else:
                 if mol is not None:
@@ -264,7 +265,7 @@ class MolReader(MolIO):
                 if self.compute_2d_coords:
                     AllChem.Compute2DCoords(mol)
             except Exception:
-                warnings.warn("Skipping " + line)
+                warnings.warn('Skipping ' + line)
                 continue
             else:
                 if name is not None:
