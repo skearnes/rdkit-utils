@@ -440,6 +440,15 @@ class TestMolReader(TestMolIO):
         mols = list(reader.get_mols())
         assert len(mols) == 0
 
+    def test_is_a_salt(self):
+        """
+        Test that a molecule that _is_ a salt is not returned empty.
+        """
+        smiles = 'C(=CC(=O)O)C(=O)O'
+        reader = serial.MolReader(StringIO(smiles), 'smi')
+        mols = list(reader.get_mols())
+        assert len(mols) == 1 and mols[0].GetNumAtoms()
+
 
 class TestMolWriter(TestMolIO):
     """
