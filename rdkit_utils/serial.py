@@ -351,7 +351,9 @@ class MolReader(MolIO):
             Molecule.
         """
         if self.remove_salts:
-            mol = self.salt_remover.StripMol(mol)
+            new = self.salt_remover.StripMol(mol)
+            if new.GetNumAtoms():
+                mol = new  # the molecule may _be_ a salt
         return mol
 
 
