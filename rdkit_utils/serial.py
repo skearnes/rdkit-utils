@@ -147,15 +147,20 @@ class MolReader(MolIO):
         Whether to compute 2D coordinates when reading SMILES. If molecules
         are written to SDF without 2D coordinates, stereochemistry
         information will be lost.
+    assign_stereo_from_3d : bool, optional (default False)
+        Whether to assign stereochemistry based on 3D configuration of
+        structures read from SDF.
     """
     def __init__(self, f=None, mol_format=None, remove_hydrogens=False,
-                 remove_salts=True, compute_2d_coords=True):
+                 remove_salts=True, compute_2d_coords=True,
+                 assign_stereo_from_3d=False):
         super(MolReader, self).__init__(f, mol_format)
         self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
         if remove_salts:
             self.salt_remover = SaltRemover()
         self.compute_2d_coords = compute_2d_coords
+        self.assign_stereo_from_3d = assign_stereo_from_3d
 
     def __iter__(self):
         """
@@ -237,6 +242,8 @@ class MolReader(MolIO):
         supplier = Chem.ForwardSDMolSupplier(self.f,
                                              removeHs=self.remove_hydrogens)
         for mol in supplier:
+            if self.assign_stereo_from_3d:
+                Chem.AssignAtomChiralTagsFromStructure(mol)
             yield mol
 
     def _get_mols_from_smiles(self):
