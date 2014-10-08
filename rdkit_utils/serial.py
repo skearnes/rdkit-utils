@@ -275,10 +275,17 @@ class MolReader(MolIO):
     def _get_mols_from_pickle(self):
         """
         Read pickled molecules from a file-like object.
+
+        Files that contain multiple pickles are supported by repeated calls
+        to load.
         """
-        mols = cPickle.load(self.f)
-        for mol in np.atleast_1d(mols):
-            yield mol
+        while True:
+            try:
+                mols = cPickle.load(self.f)
+                for mol in np.atleast_1d(mols):
+                    yield mol
+            except EOFError:
+                break
 
     def are_same_molecule(self, a, b):
         """

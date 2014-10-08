@@ -449,6 +449,21 @@ class TestMolReader(TestMolIO):
         mols = list(reader.get_mols())
         assert len(mols) == 1 and mols[0].GetNumAtoms()
 
+    def test_read_multiple_pickles(self):
+        """
+        Test reading a file containing multiple pickles. This can occur if
+        MolWriter.write is called multiple times.
+        """
+        _, filename = tempfile.mkstemp(suffix='.pkl', dir=self.temp_dir)
+        with serial.MolWriter().open(filename) as writer:
+            writer.write([self.aspirin])
+            writer.write([self.levalbuterol])
+        with self.reader.open(filename) as reader:
+            mols = list(reader)
+            assert len(mols) == 2
+            assert mols[0].ToBinary() == self.aspirin.ToBinary()
+            assert mols[1].ToBinary() == self.levalbuterol.ToBinary()
+
 
 class TestMolWriter(TestMolIO):
     """
