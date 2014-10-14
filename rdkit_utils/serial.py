@@ -361,9 +361,12 @@ class MolReader(MolIO):
         """
         if self.remove_salts:
             # hydrogens must be removed for pattern matching to work properly
-            new = self.salt_remover.StripMol(Chem.RemoveHs(mol))
-            if new.GetNumAtoms():
-                mol = new  # the molecule may _be_ a salt
+            mol_no_h = Chem.RemoveHs(mol)
+            new = self.salt_remover.StripMol(mol_no_h)
+            # only keep if it is valid (# the molecule may _be_ a salt) and has
+            # actually been changed
+            if new.GetNumAtoms() and mol_no_h.ToBinary() != new.ToBinary():
+                mol = new
         return mol
 
 

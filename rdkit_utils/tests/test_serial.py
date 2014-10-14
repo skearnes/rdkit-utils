@@ -293,8 +293,7 @@ class TestMolReader(TestMolIO):
         assert len(mols) == 1
         # FIXME get ToBinary test to work
         # assert mols[0].ToBinary() == ref_mol.ToBinary()
-        assert Chem.MolToMolBlock(mols[0]) == Chem.MolToMolBlock(
-            Chem.RemoveHs(ref_mol))
+        assert Chem.MolToMolBlock(mols[0]) == Chem.MolToMolBlock(ref_mol)
 
     def test_read_multiple_multiconformer(self):
         """
@@ -328,8 +327,8 @@ class TestMolReader(TestMolIO):
             # FIXME get ToBinary test to work
             # assert mol.ToBinary() == ref_mol.ToBinary()
             assert Chem.MolToMolBlock(
-                mol, includeStereo=1) == Chem.MolToMolBlock(
-                    Chem.RemoveHs(ref_mol), includeStereo=1)
+                mol, includeStereo=1) == Chem.MolToMolBlock(ref_mol,
+                                                            includeStereo=1)
 
     def test_are_same_molecule(self):
         """
