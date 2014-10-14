@@ -375,9 +375,9 @@ class TestMolReader(TestMolIO):
                 f.write(Chem.MolToMolBlock(mol))
                 f.write('$$$$\n')  # molecule delimiter
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
-        reader = serial.MolReader(remove_salts=True)
-        reader.open(filename)
-        mols = reader.get_mols()
+        self.reader = serial.MolReader(remove_salts=True)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
         for mol, ref_mol in zip(mols, ref_mols):
@@ -395,11 +395,12 @@ class TestMolReader(TestMolIO):
                 f.write(Chem.MolToMolBlock(mol))
                 f.write('$$$$\n')  # molecule delimiter
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
-        reader = serial.MolReader(remove_salts=False)
-        reader.open(filename)
-        mols = reader.get_mols()
+        self.reader = serial.MolReader(remove_salts=False)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
+        self.reader = serial.MolReader(remove_salts=True)
         for mol, ref_mol in zip(mols, ref_mols):
             assert mol.ToBinary() == ref_mol.ToBinary()
             desalted = self.reader.clean_mol(ref_mol)
@@ -445,7 +446,7 @@ class TestMolReader(TestMolIO):
         Test that a molecule that _is_ a salt is not returned empty.
         """
         smiles = 'C(=CC(=O)O)C(=O)O'
-        reader = serial.MolReader(StringIO(smiles), 'smi')
+        reader = serial.MolReader(StringIO(smiles), 'smi', remove_salts=True)
         mols = list(reader.get_mols())
         assert len(mols) == 1 and mols[0].GetNumAtoms()
 

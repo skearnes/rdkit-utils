@@ -140,16 +140,19 @@ class MolReader(MolIO):
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf', 'smi', and 'pkl'.
     remove_hydrogens : bool, optional (default False)
-        Whether to remove hydrogens from molecules.
-    remove_salts : bool, optional (default True)
-        Whether to remove salts from molecules.
+        Remove hydrogens from molecules.
+    remove_salts : bool, optional (default False)
+        Remove salts from molecules. Note that this will remove any hydrogens
+        present on the molecule.
     compute_2d_coords : bool, optional (default True)
-        Whether to compute 2D coordinates when reading SMILES. If molecules
-        are written to SDF without 2D coordinates, stereochemistry
-        information will be lost.
+        Compute 2D coordinates when reading SMILES. If molecules are written to
+        SDF without 2D coordinates, stereochemistry information will be lost.
     """
     def __init__(self, f=None, mol_format=None, remove_hydrogens=False,
-                 remove_salts=True, compute_2d_coords=True):
+                 remove_salts=False, compute_2d_coords=True):
+        if not remove_hydrogens and remove_salts:
+            warnings.warn('remove_salts=True forcing remove_hydrogens=True')
+            remove_hydrogens = True
         super(MolReader, self).__init__(f, mol_format)
         self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
@@ -358,7 +361,8 @@ class MolReader(MolIO):
             Molecule.
         """
         if self.remove_salts:
-            new = self.salt_remover.StripMol(mol)
+            # hydrogens must be removed for pattern matching to work properly
+            new = self.salt_remover.StripMol(Chem.RemoveHs(mol))
             if new.GetNumAtoms():
                 mol = new  # the molecule may _be_ a salt
         return mol
