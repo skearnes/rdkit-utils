@@ -293,7 +293,8 @@ class TestMolReader(TestMolIO):
         assert len(mols) == 1
         # FIXME get ToBinary test to work
         # assert mols[0].ToBinary() == ref_mol.ToBinary()
-        assert Chem.MolToMolBlock(mols[0]) == Chem.MolToMolBlock(ref_mol)
+        assert Chem.MolToMolBlock(mols[0]) == Chem.MolToMolBlock(
+            Chem.RemoveHs(ref_mol))
 
     def test_read_multiple_multiconformer(self):
         """
@@ -328,7 +329,7 @@ class TestMolReader(TestMolIO):
             # assert mol.ToBinary() == ref_mol.ToBinary()
             assert Chem.MolToMolBlock(
                 mol, includeStereo=1) == Chem.MolToMolBlock(
-                    ref_mol, includeStereo=1)
+                    Chem.RemoveHs(ref_mol), includeStereo=1)
 
     def test_are_same_molecule(self):
         """
@@ -345,7 +346,7 @@ class TestMolReader(TestMolIO):
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             f.write(Chem.MolToMolBlock(self.aspirin_h))
-        reader = serial.MolReader(remove_hydrogens=False)
+        reader = serial.MolReader(remove_hydrogens=False, remove_salts=False)
         reader.open(filename)
         mols = reader.get_mols()
         # FIXME get ToBinary test to work
