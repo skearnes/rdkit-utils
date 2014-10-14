@@ -140,16 +140,18 @@ class MolReader(MolIO):
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf', 'smi', and 'pkl'.
     remove_hydrogens : bool, optional (default False)
-        Whether to remove hydrogens from molecules.
+        Remove hydrogens from molecules.
     remove_salts : bool, optional (default True)
-        Whether to remove salts from molecules.
+        Remove salts from molecules. Note that this will remove any hydrogens
+        present on the molecule.
     compute_2d_coords : bool, optional (default True)
-        Whether to compute 2D coordinates when reading SMILES. If molecules
-        are written to SDF without 2D coordinates, stereochemistry
-        information will be lost.
+        Compute 2D coordinates when reading SMILES. If molecules are written to
+        SDF without 2D coordinates, stereochemistry information will be lost.
     """
     def __init__(self, f=None, mol_format=None, remove_hydrogens=False,
                  remove_salts=True, compute_2d_coords=True):
+        if not remove_hydrogens and remove_salts:
+            warnings.warn('Compounds with salts will have hydrogens removed')
         super(MolReader, self).__init__(f, mol_format)
         self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
@@ -275,10 +277,17 @@ class MolReader(MolIO):
     def _get_mols_from_pickle(self):
         """
         Read pickled molecules from a file-like object.
+
+        Files that contain multiple pickles are supported by repeated calls
+        to load.
         """
-        mols = cPickle.load(self.f)
-        for mol in np.atleast_1d(mols):
-            yield mol
+        while True:
+            try:
+                mols = cPickle.load(self.f)
+                for mol in np.atleast_1d(mols):
+                    yield mol
+            except EOFError:
+                break
 
     def are_same_molecule(self, a, b):
         """
@@ -351,9 +360,13 @@ class MolReader(MolIO):
             Molecule.
         """
         if self.remove_salts:
-            new = self.salt_remover.StripMol(mol)
-            if new.GetNumAtoms():
-                mol = new  # the molecule may _be_ a salt
+            # hydrogens must be removed for pattern matching to work properly
+            mol_no_h = Chem.RemoveHs(mol)
+            new = self.salt_remover.StripMol(mol_no_h)
+            # only keep if it is valid (# the molecule may _be_ a salt) and has
+            # actually been changed
+            if new.GetNumAtoms() and mol_no_h.ToBinary() != new.ToBinary():
+                mol = new
         return mol
 
 

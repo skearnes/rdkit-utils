@@ -327,8 +327,8 @@ class TestMolReader(TestMolIO):
             # FIXME get ToBinary test to work
             # assert mol.ToBinary() == ref_mol.ToBinary()
             assert Chem.MolToMolBlock(
-                mol, includeStereo=1) == Chem.MolToMolBlock(
-                    ref_mol, includeStereo=1)
+                mol, includeStereo=1) == Chem.MolToMolBlock(ref_mol,
+                                                            includeStereo=1)
 
     def test_are_same_molecule(self):
         """
@@ -345,7 +345,7 @@ class TestMolReader(TestMolIO):
         _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         with open(filename, 'wb') as f:
             f.write(Chem.MolToMolBlock(self.aspirin_h))
-        reader = serial.MolReader(remove_hydrogens=False)
+        reader = serial.MolReader(remove_hydrogens=False, remove_salts=False)
         reader.open(filename)
         mols = reader.get_mols()
         # FIXME get ToBinary test to work
@@ -375,9 +375,9 @@ class TestMolReader(TestMolIO):
                 f.write(Chem.MolToMolBlock(mol))
                 f.write('$$$$\n')  # molecule delimiter
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
-        reader = serial.MolReader(remove_salts=True)
-        reader.open(filename)
-        mols = reader.get_mols()
+        self.reader = serial.MolReader(remove_salts=True)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
         for mol, ref_mol in zip(mols, ref_mols):
@@ -395,11 +395,12 @@ class TestMolReader(TestMolIO):
                 f.write(Chem.MolToMolBlock(mol))
                 f.write('$$$$\n')  # molecule delimiter
         ref_mols = [self.aspirin_sodium, self.levalbuterol_hcl]
-        reader = serial.MolReader(remove_salts=False)
-        reader.open(filename)
-        mols = reader.get_mols()
+        self.reader = serial.MolReader(remove_salts=False)
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
         mols = list(mols)
         assert len(mols) == 2
+        self.reader = serial.MolReader(remove_salts=True)
         for mol, ref_mol in zip(mols, ref_mols):
             assert mol.ToBinary() == ref_mol.ToBinary()
             desalted = self.reader.clean_mol(ref_mol)
@@ -445,9 +446,24 @@ class TestMolReader(TestMolIO):
         Test that a molecule that _is_ a salt is not returned empty.
         """
         smiles = 'C(=CC(=O)O)C(=O)O'
-        reader = serial.MolReader(StringIO(smiles), 'smi')
+        reader = serial.MolReader(StringIO(smiles), 'smi', remove_salts=True)
         mols = list(reader.get_mols())
         assert len(mols) == 1 and mols[0].GetNumAtoms()
+
+    def test_read_multiple_pickles(self):
+        """
+        Test reading a file containing multiple pickles. This can occur if
+        MolWriter.write is called multiple times.
+        """
+        _, filename = tempfile.mkstemp(suffix='.pkl', dir=self.temp_dir)
+        with serial.MolWriter().open(filename) as writer:
+            writer.write([self.aspirin])
+            writer.write([self.levalbuterol])
+        with self.reader.open(filename) as reader:
+            mols = list(reader)
+            assert len(mols) == 2
+            assert mols[0].ToBinary() == self.aspirin.ToBinary()
+            assert mols[1].ToBinary() == self.levalbuterol.ToBinary()
 
 
 class TestMolWriter(TestMolIO):
