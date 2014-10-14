@@ -192,11 +192,13 @@ class MolReader(MolIO):
                     continue  # skip duplicate molecules without conformers
             else:
                 parent = self.clean_mol(parent)
-                yield parent
+                if parent is not None:
+                    yield parent
                 parent = mol
         if parent is not None:
             parent = self.clean_mol(parent)
-            yield parent
+            if parent is not None:
+                yield parent
 
     def _get_mols(self):
         """
@@ -361,7 +363,16 @@ class MolReader(MolIO):
         """
         if self.remove_salts:
             # hydrogens must be removed for pattern matching to work properly
-            mol_no_h = Chem.RemoveHs(mol)
+            try:
+                mol_no_h = Chem.RemoveHs(mol)
+            except ValueError:
+                if mol.HasProp('_Name'):
+                    name = mol.GetProp('_Name')
+                else:
+                    name = Chem.MolToSmiles(mol, isomericSmiles=True,
+                                            canonical=True)
+                warnings.warn('Skipping ' + name)
+                return None
             new = self.salt_remover.StripMol(mol_no_h)
             # only keep if it is valid (# the molecule may _be_ a salt) and has
             # actually been changed
