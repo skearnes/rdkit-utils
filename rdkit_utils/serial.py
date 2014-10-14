@@ -139,20 +139,19 @@ class MolReader(MolIO):
         File-like object.
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf', 'smi', and 'pkl'.
-    remove_hydrogens : bool, optional (default False)
+    remove_hydrogens : bool, optional (default True)
         Remove hydrogens from molecules.
-    remove_salts : bool, optional (default False)
+    remove_salts : bool, optional (default True)
         Remove salts from molecules. Note that this will remove any hydrogens
         present on the molecule.
     compute_2d_coords : bool, optional (default True)
         Compute 2D coordinates when reading SMILES. If molecules are written to
         SDF without 2D coordinates, stereochemistry information will be lost.
     """
-    def __init__(self, f=None, mol_format=None, remove_hydrogens=False,
-                 remove_salts=False, compute_2d_coords=True):
+    def __init__(self, f=None, mol_format=None, remove_hydrogens=True,
+                 remove_salts=True, compute_2d_coords=True):
         if not remove_hydrogens and remove_salts:
-            warnings.warn('remove_salts=True forcing remove_hydrogens=True')
-            remove_hydrogens = True
+            warnings.warn('Compounds with salts will have hydrogens removed')
         super(MolReader, self).__init__(f, mol_format)
         self.remove_hydrogens = remove_hydrogens
         self.remove_salts = remove_salts
