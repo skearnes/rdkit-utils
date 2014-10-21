@@ -147,9 +147,12 @@ class MolReader(MolIO):
     compute_2d_coords : bool, optional (default True)
         Compute 2D coordinates when reading SMILES. If molecules are written to
         SDF without 2D coordinates, stereochemistry information will be lost.
+    group_conformers : bool, optional (default True)
+        Whether to group conformers under the same parent molecule.
     """
     def __init__(self, f=None, mol_format=None, remove_hydrogens=False,
-                 remove_salts=True, compute_2d_coords=True):
+                 remove_salts=True, compute_2d_coords=True,
+                 group_conformers=True):
         if not remove_hydrogens and remove_salts:
             warnings.warn('Compounds with salts will have hydrogens removed')
         super(MolReader, self).__init__(f, mol_format)
@@ -158,6 +161,7 @@ class MolReader(MolIO):
         if remove_salts:
             self.salt_remover = SaltRemover()
         self.compute_2d_coords = compute_2d_coords
+        self.group_conformers = group_conformers
 
     def __iter__(self):
         """
@@ -184,7 +188,7 @@ class MolReader(MolIO):
             if parent is None:
                 parent = mol
                 continue
-            if self.are_same_molecule(parent, mol):
+            if self.group_conformers and self.are_same_molecule(parent, mol):
                 if mol.GetNumConformers():
                     for conf in mol.GetConformers():
                         parent.AddConformer(conf, assignId=True)

@@ -293,7 +293,12 @@ class TestMolReader(TestMolIO):
         assert len(mols) == 1
         # FIXME get ToBinary test to work
         # assert mols[0].ToBinary() == ref_mol.ToBinary()
-        assert Chem.MolToMolBlock(mols[0]) == Chem.MolToMolBlock(ref_mol)
+        assert mols[0].GetNumConformers() == ref_mol.GetNumConformers()
+        for a_conf, b_conf in zip(mols[0].GetConformers(),
+                                  ref_mol.GetConformers()):
+            assert Chem.MolToMolBlock(
+                mols[0], confId=a_conf.GetId()) == Chem.MolToMolBlock(
+                    ref_mol, confId=b_conf.GetId())
 
     def test_read_multiple_multiconformer(self):
         """
@@ -326,9 +331,13 @@ class TestMolReader(TestMolIO):
         for mol, ref_mol in zip(mols, ref_mols):
             # FIXME get ToBinary test to work
             # assert mol.ToBinary() == ref_mol.ToBinary()
-            assert Chem.MolToMolBlock(
-                mol, includeStereo=1) == Chem.MolToMolBlock(ref_mol,
-                                                            includeStereo=1)
+            assert mol.GetNumConformers() == ref_mol.GetNumConformers()
+            for a_conf, b_conf in zip(mol.GetConformers(),
+                                      ref_mol.GetConformers()):
+                assert (Chem.MolToMolBlock(
+                    mol, includeStereo=1, confId=a_conf.GetId()) ==
+                    Chem.MolToMolBlock(
+                        ref_mol, includeStereo=1, confId=b_conf.GetId()))
 
     def test_are_same_molecule(self):
         """
@@ -464,6 +473,36 @@ class TestMolReader(TestMolIO):
             assert len(mols) == 2
             assert mols[0].ToBinary() == self.aspirin.ToBinary()
             assert mols[1].ToBinary() == self.levalbuterol.ToBinary()
+
+    def test_no_group_conformers(self):
+        """
+        Test group_conformers=False.
+        """
+        self.reader.group_conformers = False
+
+        # generate conformers
+        engine = conformers.ConformerGenerator(max_conformers=3,
+                                               pool_multiplier=1)
+        ref_mol = engine.generate_conformers(self.aspirin)
+        assert ref_mol.GetNumConformers() > 1
+
+        # write to disk
+        _, filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
+        with open(filename, 'wb') as f:
+            for conf in ref_mol.GetConformers():
+                f.write(Chem.MolToMolBlock(ref_mol, confId=conf.GetId()))
+                f.write('$$$$\n')  # add molecule delimiter
+
+        # compare
+        self.reader.open(filename)
+        mols = self.reader.get_mols()
+        mols = list(mols)
+        assert len(mols) == ref_mol.GetNumConformers()
+        # FIXME get ToBinary test to work
+        # assert mols[0].ToBinary() == ref_mol.ToBinary()
+        for i, conf in enumerate(ref_mol.GetConformers()):
+            assert Chem.MolToMolBlock(mols[i]) == Chem.MolToMolBlock(
+                ref_mol, confId=conf.GetId())
 
 
 class TestMolWriter(TestMolIO):
